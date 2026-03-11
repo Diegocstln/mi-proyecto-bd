@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Login - BiblioTech</title>
+
+<style>
+body {
+    font-family: 'Arial', sans-serif;
+    background: url('https://path_to_your_image.jpg') no-repeat center center fixed;
+    background-size: cover;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.container {
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 40px;
+    border-radius: 10px;
+    width: 320px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    font-family: 'Georgia', serif;
+}
+
+p {
+    font-size: 18px;
+    margin-bottom: 30px;
+    font-family: 'Verdana', sans-serif;
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    background-color: #f4f1ea;
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #e67e22;
+}
+
+a {
+    display: block;
+    margin-top: 20px;
+    color: #f39c12;
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: #e67e22;
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="container">
+    <h2>Bienvenidos a BiblioTech</h2>
+    <p>Inicia sesión para explorar nuestro catálogo de libros.</p>
+
+    <form action="login.php" method="POST">
+        <input type="text" name="usuario" placeholder="Usuario o Email" required>
+        <input type="password" name="password" placeholder="Contraseña" required>
+        <button type="submit">Iniciar sesión</button>
+    </form>
+
+    <a href="#">¿Olvidaste tu contraseña?</a>
+    <a href="#">Crear cuenta</a>
+</div>
+
+</body>
+</html>

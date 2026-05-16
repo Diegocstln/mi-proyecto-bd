@@ -2,39 +2,36 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BiblioTech | Tu Refugio del Saber</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="index.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookNexus | Biblioteca social</title>
+  <link rel="stylesheet" href="index.css">
+  <link rel="shortcut icon" href="./src/assets/favicon.png">
 </head>
 
 <body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="BookNexus inicio">
+      <img src="src/assets/logo.png" alt="" width="46" height="46">
+      <span>BookNexus</span>
+    </a>
 
-    <section class="hero">
-        <h1>Bienvenidos a BiblioTech</h1>
-        <p>Donde las historias cobran vida y el conocimiento no tiene límites. Explora miles de ejemplares en un espacio
-            diseñado para tu inspiración.</p>
-        <a href="#explorar" class="btn">Explorar Catálogo</a>
-        <a href="#explorar" class="btn">Login</a>
-    </section>
+    <nav class="nav-tabs" aria-label="Navegacion principal">
+      <button class="active" type="button" data-view-target="explorar">Explorar</button>
+      <button type="button" data-view-target="comunidad">Comunidad</button>
+      <button type="button" data-view-target="perfil">Mi perfil</button>
+    </nav>
 
-    <section id="explorar" class="services">
-        <div class="card">
-            <h3>📖 Colección Digital</h3>
-            <p>Accede a miles de e-books y revistas científicas desde cualquier dispositivo.</p>
-        </div>
-        <div class="card">
-            <h3>Préstamos</h3>
-            <p></p>
-        </div>
-    </section>
+    <a class="login-button" href="src/login/login.html">Entrar</a>
+  </header>
 
-    <footer>
-        <p>&copy; 2026 BiblioTech.</p>
-    </footer>
+  <main class="app-shell" id="appRoot"></main>
+
+  <footer class="footer">
+    <span>BookNexus &copy; 2026</span>
+  </footer>
+
+  <script type="module" src="src/app.js"></script>
 </body>
 
 </html>

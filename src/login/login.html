@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookNexus | Acceso</title>
+  <link rel="stylesheet" href="login.css">
+  <link rel="shortcut icon" href="../assets/favicon.png">
+</head>
+
+<body>
+  <main class="auth-page">
+    <section class="auth-copy">
+      <a class="back-link" href="../../index.html"><- Volver</a>
+      <img class="auth-logo" src="../assets/logo_white.png" alt="BookNexus" width="150">
+      <p class="eyebrow">BookNexus</p>
+      <h1>Entra a tu biblioteca social</h1>
+      <p>
+        Este maquetado simula el acceso que despues puede conectarse a Supabase Auth
+        para registrar lectores, administradores y sesiones.
+      </p>
+    </section>
+
+    <section class="auth-panel" aria-label="Formulario de inicio de sesion">
+      <div class="tabs" role="tablist" aria-label="Tipo de acceso">
+        <button class="active" type="button">Lector</button>
+        <button type="button">Admin</button>
+      </div>
+
+      <form>
+        <label>
+          Correo
+          <input type="email" placeholder="correo@escuela.edu" required>
+        </label>
+        <label>
+          Contrasena
+          <input type="password" placeholder="********" required>
+        </label>
+        <button class="primary-button" type="submit">Entrar</button>
+      </form>
+
+      <p class="hint">Demo visual: el envio aun no autentica usuarios.</p>
+    </section>
+  </main>
+</body>
+
+</html>

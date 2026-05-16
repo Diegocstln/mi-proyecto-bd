@@ -1,0 +1,58 @@
+<section class="view active" id="view-explorar" data-view="explorar">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">Catalogo conectado a Open Library</p>
+      <h1>Explorar libros</h1>
+      <p>Busca titulos, guarda lecturas y filtra por genero o calificacion.</p>
+    </div>
+    <aside class="quick-stats" aria-label="Resumen de catalogo">
+      <div>
+        <span>Libros guardados</span>
+        <strong>128</strong>
+      </div>
+      <div>
+        <span>Promedio global</span>
+        <strong>4.6</strong>
+      </div>
+    </aside>
+  </div>
+
+  <form class="search-panel" id="searchForm" aria-label="Buscar libros">
+    <label for="searchInput">Buscar en el catalogo</label>
+    <div class="search-row">
+      <input id="searchInput" name="search" type="search" placeholder="Titulo, autor o genero" autocomplete="off">
+      <button class="primary-button" type="submit">Buscar</button>
+    </div>
+  </form>
+
+  <div class="catalog-layout">
+    <aside class="filters" aria-label="Filtros secundarios">
+      <h2>Filtros</h2>
+      <label>
+        Estado
+        <div class="segmented-control" aria-label="Filtros del catalogo">
+          <button class="active" type="button" data-filter="all">Todos</button>
+          <button type="button" data-filter="reading">Leyendo</button>
+          <button type="button" data-filter="favorite">Favoritos</button>
+        </div>
+      </label>
+      <label>
+        Genero
+        <select id="genreFilter">
+          <option value="all">Todos</option>
+          <option value="Fantasia">Fantasia</option>
+          <option value="Misterio">Misterio</option>
+          <option value="Ciencia ficcion">Ciencia ficcion</option>
+          <option value="Clasico">Clasico</option>
+        </select>
+      </label>
+      <label>
+        Calificacion minima
+        <input id="ratingFilter" type="range" min="0" max="5" step="1" value="0">
+      </label>
+      <output id="ratingValue">0 estrellas</output>
+    </aside>
+
+    <div class="book-grid" id="bookGrid" aria-live="polite"></div>
+  </div>
+</section>

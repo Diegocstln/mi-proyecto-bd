@@ -41,6 +41,7 @@ const profileLock = document.querySelector('#profile-lock');
 const communityReviewCount = document.querySelector('#community-review-count');
 const communityReaderCount = document.querySelector('#community-reader-count');
 const communityReviews = document.querySelector('#community-reviews');
+const readerList = document.querySelector('#reader-list');
 const logoutButton = document.querySelector('#logout-button');
 const detailDialog = document.querySelector('#book-detail-dialog');
 const detailTitle = document.querySelector('#detail-title');
@@ -56,6 +57,10 @@ const actionSecondary = document.querySelector('#action-secondary');
 const toastStack = document.querySelector('#toast-stack');
 let searchTimer = 0;
 let activeActionResolver = null;
+const readerDialog = document.querySelector('#reader-dialog');
+const readerTitle = document.querySelector('#reader-title');
+const readerBody = document.querySelector('#reader-body');
+const readerClose = document.querySelector('#reader-close');
 
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
@@ -346,6 +351,33 @@ async function getCommunity() {
   return response.json();
 }
 
+async function getReaderProfile(idUsuario) {
+  const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  const response = await fetch(`${apiBaseUrl}/api/library/users/${idUsuario}`, { headers });
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar el perfil');
+  }
+
+  return response.json();
+}
+
+async function followReader(idUsuario, isFollowing) {
+  const response = await fetch(`${apiBaseUrl}/api/library/users/${idUsuario}/follow`, {
+    method: isFollowing ? 'DELETE' : 'POST',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo actualizar el seguimiento');
+  }
+
+  return response.json();
+}
+
 async function saveFavorite(book) {
   const response = await fetch(`${apiBaseUrl}/api/favorites`, {
     method: 'POST',
@@ -529,6 +561,7 @@ function renderCommunity() {
   const stats = state.community.stats || {};
   const reviews = state.community.recentReviews || [];
   const popularBooks = state.community.popularBooks || [];
+  const activeUsers = state.community.activeUsers || [];
 
   communityReviewCount.textContent = String(stats.total_resenas || 0);
   communityReaderCount.textContent = String(stats.lectores_activos || 0);
@@ -560,6 +593,18 @@ function renderCommunity() {
         `)
         .join('')
     : rankingList.innerHTML;
+
+  readerList.innerHTML = activeUsers.length
+    ? activeUsers
+        .map((user) => `
+          <li>
+            <strong>@${escapeHtml(user.username)}</strong><br>
+            <span>${escapeHtml(user.nombre)} · ${user.total_resenas} resenas · ${user.total_favoritos} favoritos</span><br>
+            <button class="ghost-button" type="button" data-reader="${user.id_usuario}">Ver perfil</button>
+          </li>
+        `)
+        .join('')
+    : '<li><strong>Sin lectores todavia</strong><br><span>Crea usuarios y actividad para llenar esta lista.</span></li>';
 }
 
 async function refreshLibrary() {
@@ -582,6 +627,37 @@ async function refreshCommunity() {
   } catch (error) {
     renderCommunity();
   }
+}
+
+function renderReaderProfile(profile) {
+  const data = profile.data;
+  const user = data.user;
+  const lists = data.lists || [];
+  const reading = data.reading || [];
+  const reviews = data.reviews || [];
+  const canFollow = state.user && state.user.id_usuario !== user.id_usuario;
+
+  readerTitle.textContent = `@${user.username}`;
+  readerBody.innerHTML = `
+    <p><strong>${escapeHtml(user.nombre)}</strong></p>
+    <p>${user.followers} seguidores · ${user.following} siguiendo</p>
+    ${canFollow ? `
+      <button class="ghost-button" type="button" data-follow-reader="${user.id_usuario}" data-following="${user.is_following}">
+        ${user.is_following ? 'Dejar de seguir' : 'Seguir'}
+      </button>
+    ` : ''}
+    <h3>Listas publicas</h3>
+    ${lists.length ? lists.map((list) => `
+      <div class="list-card">
+        <span>${escapeHtml(list.nombre_lista)}</span>
+        <strong>${list.books.length} ${list.books.length === 1 ? 'libro' : 'libros'}</strong>
+      </div>
+    `).join('') : '<p class="status">Este usuario no tiene listas publicas.</p>'}
+    <h3>Lectura reciente</h3>
+    ${reading.length ? reading.map((item) => `<p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>`).join('') : '<p class="status">Sin historial publico.</p>'}
+    <h3>Resenas</h3>
+    ${reviews.length ? reviews.map((review) => `<p><strong>${review.calificacion}/5</strong> ${escapeHtml(review.titulo)}: ${escapeHtml(review.comentario)}</p>`).join('') : '<p class="status">Sin resenas.</p>'}
+  `;
 }
 
 function getInitialsFromUser(user) {
@@ -871,7 +947,20 @@ grid.addEventListener('click', async (event) => {
     }
 
     if (listButton) {
-      let list = state.library.lists?.[0];
+      let list = null;
+      const lists = state.library.lists || [];
+
+      if (lists.length) {
+        const options = lists
+          .map((item, index) => `${index + 1}. ${item.nombre_lista}`)
+          .join('\n');
+        const selection = window.prompt(`Elige lista por numero o escribe NUEVA:\n${options}`, '1');
+        const selectedIndex = Number(selection) - 1;
+
+        if (selection && selection.toLowerCase() !== 'nueva' && lists[selectedIndex]) {
+          list = lists[selectedIndex];
+        }
+      }
 
       if (!list) {
         const listData = await openActionDialog({
@@ -945,6 +1034,49 @@ logoutButton.addEventListener('click', () => {
 });
 
 detailClose.addEventListener('click', () => detailDialog.close());
+readerClose.addEventListener('click', () => readerDialog.close());
+
+readerList.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-reader]');
+
+  if (!button) {
+    return;
+  }
+
+  try {
+    readerBody.innerHTML = '<p class="status">Cargando perfil...</p>';
+    readerDialog.showModal();
+    const profile = await getReaderProfile(button.dataset.reader);
+    renderReaderProfile(profile);
+  } catch (error) {
+    readerBody.innerHTML = '<p class="status error">No se pudo cargar el perfil.</p>';
+  }
+});
+
+readerBody.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-follow-reader]');
+
+  if (!button) {
+    return;
+  }
+
+  if (!state.token) {
+    window.location.href = 'src/login/login.html';
+    return;
+  }
+
+  button.disabled = true;
+
+  try {
+    const profile = await followReader(button.dataset.followReader, button.dataset.following === 'true');
+    renderReaderProfile(profile);
+    await refreshCommunity();
+  } catch (error) {
+    button.textContent = error.message || 'Error';
+  } finally {
+    button.disabled = false;
+  }
+});
 
 bindNavigation();
 initializeViewFromHash();

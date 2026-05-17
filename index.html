@@ -131,6 +131,11 @@
             <h2>Ranking semanal</h2>
             <ol id="ranking-list"></ol>
           </article>
+
+          <article class="ranking-panel">
+            <h2>Lectores</h2>
+            <ol id="reader-list"></ol>
+          </article>
         </div>
       </section>
 
@@ -231,5 +236,15 @@
     </dialog>
 
     <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog class="book-detail-dialog" id="reader-dialog" aria-labelledby="reader-title">
+      <div class="dialog-head">
+        <h2 id="reader-title">Perfil publico</h2>
+        <button class="icon-button" id="reader-close" type="button" aria-label="Cerrar perfil" title="Cerrar">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="dialog-body" id="reader-body"></div>
+    </dialog>
   </body>
 </html>

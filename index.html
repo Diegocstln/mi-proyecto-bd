@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BooksNexus</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="BooksNexus inicio">
+        <span class="brand-mark">B</span>
+        <span>BooksNexus</span>
+      </a>
+      <nav class="nav" aria-label="Navegacion principal">
+        <a href="#explorar">Explorar</a>
+        <a href="#biblioteca">Biblioteca</a>
+        <a href="#actividad">Actividad</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="search-section" id="explorar">
+        <div class="section-copy">
+          <p class="eyebrow">Red social de libros</p>
+          <h1>Encuentra libros, guarda lecturas y comparte resenas.</h1>
+          <p>
+            Busca en Open Library desde el backend privado y prepara tu biblioteca
+            para conectarla con usuarios, listas y reseñas.
+          </p>
+        </div>
+
+        <form class="search-panel" id="search-form">
+          <label for="search-input">Buscar libro</label>
+          <div class="search-row">
+            <input
+              id="search-input"
+              name="q"
+              type="search"
+              placeholder="Harry Potter, Dune, Borges..."
+              autocomplete="off"
+              required
+            />
+            <button type="submit">Buscar</button>
+          </div>
+          <p class="status" id="status" role="status">Backend esperado: http://localhost:3000</p>
+        </form>
+      </section>
+
+      <section class="content-grid">
+        <aside class="panel" id="biblioteca">
+          <h2>Mi biblioteca</h2>
+          <div class="metric">
+            <span>Pendientes</span>
+            <strong>0</strong>
+          </div>
+          <div class="metric">
+            <span>Leyendo</span>
+            <strong>0</strong>
+          </div>
+          <div class="metric">
+            <span>Resenados</span>
+            <strong>0</strong>
+          </div>
+        </aside>
+
+        <section class="results" aria-labelledby="results-title">
+          <div class="results-head">
+            <h2 id="results-title">Resultados</h2>
+            <span id="result-count">0 libros</span>
+          </div>
+          <div class="book-grid" id="book-grid"></div>
+        </section>
+
+        <aside class="panel" id="actividad">
+          <h2>Actividad</h2>
+          <p class="empty-state">
+            Aqui apareceran reseñas, seguidores y libros guardados cuando conectemos la base de datos.
+          </p>
+        </aside>
+      </section>
+    </main>
+  </body>
+</html>

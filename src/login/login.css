@@ -164,6 +164,10 @@ input {
   font-size: 0.88rem;
 }
 
+.hint.error {
+  color: #a03a22;
+}
+
 @media (max-width: 840px) {
   .auth-page {
     grid-template-columns: 1fr;

@@ -2,9 +2,11 @@ const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
 
 const state = {
   books: [],
-  saved: new Set(),
+  saved: new Set(JSON.parse(localStorage.getItem('booksnexus_saved') || '[]')),
   filter: 'all',
   minYear: 0,
+  token: localStorage.getItem('booksnexus_token') || '',
+  user: null,
 };
 
 const form = document.querySelector('#search-form');
@@ -21,10 +23,26 @@ const filterButtons = document.querySelectorAll('[data-filter]');
 const navButtons = document.querySelectorAll('[data-view-target]');
 const topbar = document.querySelector('.topbar');
 const menuToggle = document.querySelector('.menu-toggle');
+const authLinks = document.querySelectorAll('[data-auth-link]');
+const profileName = document.querySelector('#profile-name');
+const profileUsername = document.querySelector('#profile-username');
+const profileEmail = document.querySelector('#profile-email');
+const profileAvatar = document.querySelector('#profile-avatar');
+const profileStatus = document.querySelector('#profile-status');
+const logoutButton = document.querySelector('#logout-button');
+const detailDialog = document.querySelector('#book-detail-dialog');
+const detailTitle = document.querySelector('#detail-title');
+const detailBody = document.querySelector('#detail-body');
+const detailClose = document.querySelector('#detail-close');
 
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
   statusElement.classList.toggle('error', isError);
+}
+
+function setProfileStatus(message, isError = false) {
+  profileStatus.textContent = message;
+  profileStatus.classList.toggle('error', isError);
 }
 
 function formatAuthors(authors) {
@@ -60,11 +78,13 @@ function escapeHtml(value) {
 }
 
 function normalizeBook(book, index) {
-  const title = book.title || 'Título no disponible';
+  const title = book.title || 'Titulo no disponible';
   const firstPublishYear = Number(book.firstPublishYear) || 0;
+  const id = String(book.openLibraryKey || book.id || book.key || `book-${index}`);
 
   return {
-    id: String(book.id || book.key || `book-${index}`),
+    id,
+    workKey: id.replace('/works/', ''),
     title,
     authors: book.authors || [],
     firstPublishYear,
@@ -79,6 +99,10 @@ function getFilteredBooks() {
 
     return matchesSaved && matchesYear;
   });
+}
+
+function persistSavedBooks() {
+  localStorage.setItem('booksnexus_saved', JSON.stringify([...state.saved]));
 }
 
 function updateMetrics(books) {
@@ -103,8 +127,8 @@ function renderBooks() {
     grid.innerHTML = `
       <article class="book-card empty-card">
         <div class="book-content">
-          <h3>No hay resultados todavía</h3>
-          <p>Busca por título o autor para consultar libros desde la API.</p>
+          <h3>No hay resultados todavia</h3>
+          <p>Busca por titulo o autor para consultar libros desde la API.</p>
         </div>
       </article>
     `;
@@ -128,15 +152,18 @@ function renderBooks() {
             <h3>${title}</h3>
             <div class="tag-row">
               <span class="tag">${year}</span>
-              <span class="tag">${isSaved ? 'Guardado' : 'Catálogo'}</span>
+              <span class="tag">${isSaved ? 'Guardado' : 'Catalogo'}</span>
             </div>
-            <p>Resultado conectado al catálogo externo de BooksNexus.</p>
+            <p>Resultado conectado al catalogo externo de BooksNexus.</p>
           </div>
           <div class="book-actions">
             <span class="rating"><i class="fa-solid fa-bookmark" aria-hidden="true"></i></span>
             <button class="ghost-button ${isSaved ? 'saved' : ''}" type="button" data-save="${bookId}">
               <i class="fa-solid ${isSaved ? 'fa-check' : 'fa-plus'}" aria-hidden="true"></i>
               <span>${isSaved ? 'Guardado' : 'Guardar'}</span>
+            </button>
+            <button class="icon-button" type="button" data-detail="${bookId}" aria-label="Ver detalle de ${title}" title="Ver detalle">
+              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
             </button>
           </div>
         </article>
@@ -157,7 +184,7 @@ function renderRanking() {
     ? rankedBooks
         .map((book) => `<li><strong>${escapeHtml(book.title)}</strong><br><span>${escapeHtml(formatAuthors(book.authors))} - ${book.firstPublishYear}</span></li>`)
         .join('')
-    : '<li><strong>Sin búsquedas todavía</strong><br><span>El ranking se llena con los resultados consultados.</span></li>';
+    : '<li><strong>Sin busquedas todavia</strong><br><span>El ranking se llena con los resultados consultados.</span></li>';
 }
 
 async function searchBooks(query) {
@@ -168,6 +195,89 @@ async function searchBooks(query) {
   }
 
   return response.json();
+}
+
+async function getBookDetail(workKey) {
+  const response = await fetch(`${apiBaseUrl}/api/books/${encodeURIComponent(workKey)}`);
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar el detalle');
+  }
+
+  return response.json();
+}
+
+async function getCurrentUser() {
+  const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Sesion no valida');
+  }
+
+  return response.json();
+}
+
+function getInitialsFromUser(user) {
+  const source = user?.nombre || user?.username || 'BN';
+
+  return source
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function renderAuthState() {
+  const isLoggedIn = Boolean(state.user);
+
+  authLinks.forEach((link) => {
+    const label = link.querySelector('span');
+    const icon = link.querySelector('i');
+
+    link.href = isLoggedIn ? '#view-perfil' : 'src/login/login.html';
+    label.textContent = isLoggedIn ? state.user.username : 'Entrar';
+    icon.className = `fa-solid ${isLoggedIn ? 'fa-user-check' : 'fa-right-to-bracket'}`;
+  });
+
+  if (!state.user) {
+    profileName.textContent = 'Mi perfil';
+    profileUsername.textContent = 'Inicia sesion para ver tus datos reales.';
+    profileEmail.textContent = 'Sin sesion activa';
+    profileAvatar.textContent = 'BN';
+    logoutButton.hidden = true;
+    setProfileStatus('Conecta con tu cuenta desde la pantalla de acceso.');
+    return;
+  }
+
+  profileName.textContent = state.user.nombre || state.user.username;
+  profileUsername.textContent = `@${state.user.username}`;
+  profileEmail.textContent = state.user.correo;
+  profileAvatar.textContent = getInitialsFromUser(state.user);
+  logoutButton.hidden = false;
+  setProfileStatus(`Sesion conectada a ${apiBaseUrl}`);
+}
+
+async function hydrateUser() {
+  if (!state.token) {
+    renderAuthState();
+    return;
+  }
+
+  try {
+    const result = await getCurrentUser();
+    state.user = result.user;
+  } catch (error) {
+    state.token = '';
+    localStorage.removeItem('booksnexus_token');
+  }
+
+  renderAuthState();
 }
 
 function setActiveView(viewName) {
@@ -192,10 +302,29 @@ function bindNavigation() {
     button.addEventListener('click', () => setActiveView(button.dataset.viewTarget));
   });
 
+  authLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      if (!state.user) {
+        return;
+      }
+
+      event.preventDefault();
+      setActiveView('perfil');
+    });
+  });
+
   menuToggle.addEventListener('click', () => {
     const isOpen = topbar.classList.toggle('menu-open');
     menuToggle.setAttribute('aria-expanded', String(isOpen));
   });
+}
+
+function initializeViewFromHash() {
+  const viewName = window.location.hash.replace('#view-', '');
+
+  if (viewName && document.querySelector(`[data-view="${viewName}"]`)) {
+    setActiveView(viewName);
+  }
 }
 
 form.addEventListener('submit', async (event) => {
@@ -215,11 +344,11 @@ form.addEventListener('submit', async (event) => {
     const result = await searchBooks(query);
     state.books = (result.data || []).map(normalizeBook);
     renderBooks();
-    setStatus(`Búsqueda lista desde ${apiBaseUrl}`);
+    setStatus(`Busqueda lista desde ${apiBaseUrl}`);
   } catch (error) {
     state.books = [];
     renderBooks();
-    setStatus('No se pudo conectar con el backend. Revisa que esté encendido.', true);
+    setStatus('No se pudo conectar con el backend. Revisa que este encendido.', true);
   } finally {
     button.disabled = false;
   }
@@ -236,11 +365,45 @@ filterButtons.forEach((button) => {
 
 yearFilter.addEventListener('input', (event) => {
   state.minYear = Number(event.target.value);
-  yearValue.textContent = state.minYear ? `Desde ${state.minYear}` : 'Cualquier año';
+  yearValue.textContent = state.minYear ? `Desde ${state.minYear}` : 'Cualquier ano';
   renderBooks();
 });
 
 grid.addEventListener('click', (event) => {
+  const detailButton = event.target.closest('[data-detail]');
+
+  if (detailButton) {
+    const book = state.books.find((item) => item.id === detailButton.dataset.detail);
+
+    if (!book) {
+      return;
+    }
+
+    detailTitle.textContent = book.title;
+    detailBody.innerHTML = '<p class="status">Cargando detalle desde BooksNexus...</p>';
+    detailDialog.showModal();
+
+    getBookDetail(book.workKey)
+      .then((result) => {
+        const detail = result.data || {};
+        const description = detail.description || 'Open Library no tiene descripcion para este libro.';
+        const subjects = (detail.subjects || []).slice(0, 8);
+
+        detailBody.innerHTML = `
+          <p>${escapeHtml(description)}</p>
+          <div class="tag-row">
+            <span class="tag">${escapeHtml(detail.firstPublishDate || book.firstPublishYear || 'Fecha no disponible')}</span>
+            ${subjects.map((subject) => `<span class="tag">${escapeHtml(subject)}</span>`).join('')}
+          </div>
+        `;
+      })
+      .catch(() => {
+        detailBody.innerHTML = '<p class="status error">No se pudo cargar el detalle. Revisa que el backend este encendido.</p>';
+      });
+
+    return;
+  }
+
   const button = event.target.closest('[data-save]');
 
   if (!button) {
@@ -255,8 +418,20 @@ grid.addEventListener('click', (event) => {
     state.saved.add(bookId);
   }
 
+  persistSavedBooks();
   renderBooks();
 });
 
+logoutButton.addEventListener('click', () => {
+  state.user = null;
+  state.token = '';
+  localStorage.removeItem('booksnexus_token');
+  renderAuthState();
+});
+
+detailClose.addEventListener('click', () => detailDialog.close());
+
 bindNavigation();
+initializeViewFromHash();
+hydrateUser();
 renderBooks();

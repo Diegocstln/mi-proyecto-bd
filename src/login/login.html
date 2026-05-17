@@ -1,60 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BooksNexus | Acceso</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="login.css" />
+    <link rel="shortcut icon" href="../assets/favicon.png" />
+    <script src="../../config.js" defer></script>
+    <script src="login.js" defer></script>
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BooksNexus | Acceso</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link rel="stylesheet" href="login.css">
-  <link rel="shortcut icon" href="../assets/favicon.png">
-</head>
+  <body>
+    <main class="auth-page">
+      <section class="auth-copy">
+        <a class="back-link" href="../../index.html">
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+          <span>Volver</span>
+        </a>
+        <img class="auth-logo" src="../assets/logo_white.png" alt="BooksNexus" width="150" />
+        <p class="eyebrow">BooksNexus</p>
+        <h1>Entra a tu biblioteca social</h1>
+        <p>Inicia sesion o crea tu cuenta usando la API privada de BooksNexus.</p>
+      </section>
 
-<body>
-  <main class="auth-page">
-    <section class="auth-copy">
-      <a class="back-link" href="../../index.html">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-        <span>Volver</span>
-      </a>
-      <img class="auth-logo" src="../assets/logo_white.png" alt="BooksNexus" width="150">
-      <p class="eyebrow">BooksNexus</p>
-      <h1>Entra a tu biblioteca social</h1>
-      <p>
-        Este acceso queda listo para conectar sesiones de lectores, administradores y comunidad.
-      </p>
-    </section>
+      <section class="auth-panel" aria-label="Formulario de acceso">
+        <div class="tabs" role="tablist" aria-label="Tipo de acceso">
+          <button class="active" type="button" data-auth-mode="login">
+            <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+            <span>Entrar</span>
+          </button>
+          <button type="button" data-auth-mode="register">
+            <i class="fa-solid fa-user-plus" aria-hidden="true"></i>
+            <span>Crear cuenta</span>
+          </button>
+        </div>
 
-    <section class="auth-panel" aria-label="Formulario de inicio de sesión">
-      <div class="tabs" role="tablist" aria-label="Tipo de acceso">
-        <button class="active" type="button">
-          <i class="fa-solid fa-book-reader" aria-hidden="true"></i>
-          <span>Lector</span>
-        </button>
-        <button type="button">
-          <i class="fa-solid fa-user-shield" aria-hidden="true"></i>
-          <span>Admin</span>
-        </button>
-      </div>
+        <form id="auth-form">
+          <label class="register-only" hidden>
+            Nombre
+            <input id="nombre" name="nombre" type="text" placeholder="Mely Gonzalez" autocomplete="name" />
+          </label>
+          <label class="register-only" hidden>
+            Usuario
+            <input id="username" name="username" type="text" placeholder="mely_reader" autocomplete="username" />
+          </label>
+          <label>
+            Correo
+            <input id="correo" name="correo" type="email" placeholder="correo@escuela.edu" autocomplete="email" required />
+          </label>
+          <label>
+            Contrasena
+            <input id="password" name="password" type="password" placeholder="********" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button" id="submit-button" type="submit">
+            <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+            <span>Entrar</span>
+          </button>
+        </form>
 
-      <form>
-        <label>
-          Correo
-          <input type="email" placeholder="correo@escuela.edu" required>
-        </label>
-        <label>
-          Contraseña
-          <input type="password" placeholder="********" required>
-        </label>
-        <button class="primary-button" type="submit">
-          <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-          <span>Entrar</span>
-        </button>
-      </form>
-
-      <p class="hint">Demo visual: el envío aún no autentica usuarios.</p>
-    </section>
-  </main>
-</body>
-
+        <p class="hint" id="auth-status" role="status">Conectando con http://localhost:3000 por defecto.</p>
+      </section>
+    </main>
+  </body>
 </html>

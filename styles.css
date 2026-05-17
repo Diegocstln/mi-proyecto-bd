@@ -114,7 +114,8 @@ a {
 .nav-tabs button,
 .login-button,
 .primary-button,
-.ghost-button {
+.ghost-button,
+.icon-button {
   border: 0;
   border-radius: 8px;
   font-weight: 800;
@@ -465,6 +466,20 @@ h2 {
   background: var(--green);
 }
 
+.icon-button {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.icon-button:hover {
+  transform: translateY(-2px);
+}
+
 .empty-card {
   min-height: 180px;
 }
@@ -513,7 +528,7 @@ h2 {
 }
 
 .profile-header {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
 }
 
@@ -536,6 +551,13 @@ h2 {
 .reading-now strong {
   display: block;
   margin: 4px 0 14px;
+}
+
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
 }
 
 .progress-bar {
@@ -591,6 +613,39 @@ h2 {
   margin: 0 auto;
   padding: 20px 0 30px;
   color: var(--muted);
+}
+
+.book-detail-dialog {
+  width: min(680px, calc(100% - 28px));
+  padding: 0;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.book-detail-dialog::backdrop {
+  background: rgba(22, 33, 58, 0.45);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.dialog-head h2 {
+  margin: 0;
+}
+
+.dialog-body {
+  max-height: min(68vh, 620px);
+  overflow: auto;
+  padding: 18px;
 }
 
 @media (max-width: 980px) {
@@ -652,6 +707,10 @@ h2 {
   .book-grid,
   .profile-header {
     grid-template-columns: 1fr;
+  }
+
+  .profile-header {
+    justify-items: start;
   }
 
   .primary-button {

@@ -17,11 +17,11 @@
         <span>BooksNexus</span>
       </a>
 
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menú">
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menu">
         <i class="fa-solid fa-bars" aria-hidden="true"></i>
       </button>
 
-      <nav class="nav-tabs" id="main-nav" aria-label="Navegación principal">
+      <nav class="nav-tabs" id="main-nav" aria-label="Navegacion principal">
         <button class="active" type="button" data-view-target="explorar">
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
           <span>Explorar</span>
@@ -36,7 +36,7 @@
         </button>
       </nav>
 
-      <a class="login-button" href="src/login/login.html">
+      <a class="login-button" href="src/login/login.html" data-auth-link>
         <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
         <span>Entrar</span>
       </a>
@@ -46,12 +46,12 @@
       <section class="view active" id="view-explorar" data-view="explorar">
         <div class="page-heading">
           <div>
-            <p class="eyebrow">Catálogo conectado a Open Library</p>
+            <p class="eyebrow">Catalogo conectado a Open Library</p>
             <h1>Explora libros, guarda lecturas y comparte hallazgos.</h1>
-            <p>Busca títulos desde el backend de BooksNexus y arma una biblioteca lista para crecer con usuarios, listas y reseñas.</p>
+            <p>Busca titulos desde el backend de BooksNexus y arma una biblioteca lista para crecer con usuarios, listas y resenas.</p>
           </div>
 
-          <aside class="quick-stats" aria-label="Resumen de catálogo">
+          <aside class="quick-stats" aria-label="Resumen de catalogo">
             <div>
               <span>Libros encontrados</span>
               <strong id="total-books">0</strong>
@@ -64,7 +64,7 @@
         </div>
 
         <form class="search-panel" id="search-form" aria-label="Buscar libros">
-          <label for="search-input">Buscar en el catálogo</label>
+          <label for="search-input">Buscar en el catalogo</label>
           <div class="search-row">
             <input id="search-input" name="q" type="search" placeholder="Harry Potter, Dune, Borges..." autocomplete="off" required />
             <button class="primary-button" type="submit">
@@ -72,7 +72,7 @@
               <span>Buscar</span>
             </button>
           </div>
-          <p class="status" id="status" role="status">Listo para consultar el catálogo.</p>
+          <p class="status" id="status" role="status">Listo para consultar el catalogo.</p>
         </form>
 
         <div class="catalog-layout">
@@ -80,16 +80,16 @@
             <h2>Filtros</h2>
             <label>
               Estado
-              <div class="segmented-control" aria-label="Filtros del catálogo">
+              <div class="segmented-control" aria-label="Filtros del catalogo">
                 <button class="active" type="button" data-filter="all">Todos</button>
                 <button type="button" data-filter="saved">Guardados</button>
               </div>
             </label>
             <label>
-              Año mínimo
+              Ano minimo
               <input id="year-filter" type="range" min="0" max="2026" step="1" value="0" />
             </label>
-            <output id="year-value">Cualquier año</output>
+            <output id="year-value">Cualquier ano</output>
           </aside>
 
           <section class="results" aria-labelledby="results-title">
@@ -107,11 +107,11 @@
           <div>
             <p class="eyebrow">Actividad social</p>
             <h1>Comunidad</h1>
-            <p>Reseñas, rankings y recomendaciones para que la red de lectores tenga vida desde el primer vistazo.</p>
+            <p>Resenas, rankings y recomendaciones para que la red de lectores tenga vida desde el primer vistazo.</p>
           </div>
           <aside class="quick-stats" aria-label="Resumen de comunidad">
             <div>
-              <span>Reseñas</span>
+              <span>Resenas</span>
               <strong>46</strong>
             </div>
             <div>
@@ -123,20 +123,20 @@
 
         <div class="activity-grid">
           <article class="feed-panel">
-            <h2>Reseñas recientes</h2>
+            <h2>Resenas recientes</h2>
             <div class="review">
-              <strong>Ana Martínez</strong>
-              <span>calificó "Dune" con 5 estrellas</span>
-              <p>Una lectura enorme para hablar de política, ecología y poder sin sentirse como tarea.</p>
+              <strong>Ana Martinez</strong>
+              <span>califico "Dune" con 5 estrellas</span>
+              <p>Una lectura enorme para hablar de politica, ecologia y poder sin sentirse como tarea.</p>
             </div>
             <div class="review">
               <strong>Carlos Vega</strong>
-              <span>terminó "Orgullo y prejuicio"</span>
-              <p>Me sorprendió lo moderna que se siente Elizabeth Bennet cuando responde sin miedo.</p>
+              <span>termino "Orgullo y prejuicio"</span>
+              <p>Me sorprendio lo moderna que se siente Elizabeth Bennet cuando responde sin miedo.</p>
             </div>
             <div class="review">
               <strong>Mely G.</strong>
-              <span>agregó "Ficciones" a su lista de favoritos</span>
+              <span>agrego "Ficciones" a su lista de favoritos</span>
               <p>Perfecto para mostrar historial de lectura y relaciones de la base de datos.</p>
             </div>
           </article>
@@ -150,17 +150,21 @@
 
       <section class="view" id="view-perfil" data-view="perfil" hidden>
         <div class="profile-header">
-          <div class="avatar" aria-hidden="true">ML</div>
+          <div class="avatar" id="profile-avatar" aria-hidden="true">BN</div>
           <div>
             <p class="eyebrow">Perfil de lector</p>
-            <h1>Mi perfil</h1>
-            <p>Favoritos, listas, historial de lectura y estadísticas personales.</p>
+            <h1 id="profile-name">Mi perfil</h1>
+            <p id="profile-username">Inicia sesion para ver tus datos reales.</p>
           </div>
+          <button class="ghost-button logout-button" id="logout-button" type="button" hidden>
+            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+            <span>Salir</span>
+          </button>
         </div>
 
         <div class="reading-now">
-          <span>Leyendo ahora</span>
-          <strong>La sombra del viento</strong>
+          <span id="profile-email">Sin sesion activa</span>
+          <strong id="profile-status">Conecta con tu cuenta desde la pantalla de acceso.</strong>
           <div class="progress-bar"><span style="width: 68%"></span></div>
         </div>
 
@@ -172,7 +176,7 @@
               <strong>8 libros</strong>
             </div>
             <div class="list-card">
-              <span>Clásicos pendientes</span>
+              <span>Clasicos pendientes</span>
               <strong>12 libros</strong>
             </div>
           </article>
@@ -190,13 +194,13 @@
           </article>
 
           <article>
-            <h2>Estadísticas</h2>
+            <h2>Estadisticas</h2>
             <div class="stats-row">
-              <span>Páginas este mes</span>
+              <span>Paginas este mes</span>
               <strong>842</strong>
             </div>
             <div class="stats-row">
-              <span>Género favorito</span>
+              <span>Genero favorito</span>
               <strong>Misterio</strong>
             </div>
           </article>
@@ -205,7 +209,17 @@
     </main>
 
     <footer class="footer">
-      <span>BooksNexus © 2026</span>
+      <span>BooksNexus 2026</span>
     </footer>
+
+    <dialog class="book-detail-dialog" id="book-detail-dialog" aria-labelledby="detail-title">
+      <div class="dialog-head">
+        <h2 id="detail-title">Detalle del libro</h2>
+        <button class="icon-button" id="detail-close" type="button" aria-label="Cerrar detalle" title="Cerrar">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="dialog-body" id="detail-body"></div>
+    </dialog>
   </body>
 </html>

@@ -36,6 +36,8 @@ const profileStatsFavorites = document.querySelector('#profile-stats-favorites')
 const profileLastFavorite = document.querySelector('#profile-last-favorite');
 const profileLists = document.querySelector('#profile-lists');
 const profileReading = document.querySelector('#profile-reading');
+const profileFollowers = document.querySelector('#profile-followers');
+const profileFollowing = document.querySelector('#profile-following');
 const profileView = document.querySelector('#view-perfil');
 const profileLock = document.querySelector('#profile-lock');
 const communityReviewCount = document.querySelector('#community-review-count');
@@ -529,9 +531,24 @@ function syncSavedFromFavorites(favorites) {
   persistSavedBooks();
 }
 
+function renderPeopleList(people, emptyText) {
+  return people?.length
+    ? people
+        .map((person) => `
+          <div class="list-card">
+            <span>@${escapeHtml(person.username)}</span>
+            <strong>${escapeHtml(person.nombre)}</strong>
+          </div>
+        `)
+        .join('')
+    : `<p class="status">${emptyText}</p>`;
+}
+
 function renderLibrary() {
   const lists = state.library.lists || [];
   const reading = state.library.reading || [];
+  const followers = state.library.followers || [];
+  const following = state.library.following || [];
 
   profileLists.innerHTML = lists.length
     ? lists
@@ -555,6 +572,8 @@ function renderLibrary() {
         `)
         .join('')
     : '';
+  profileFollowers.innerHTML = renderPeopleList(followers, 'Todavia nadie te sigue.');
+  profileFollowing.innerHTML = renderPeopleList(following, 'Todavia no sigues a ningun lector.');
 }
 
 function renderCommunity() {
@@ -635,6 +654,8 @@ function renderReaderProfile(profile) {
   const lists = data.lists || [];
   const reading = data.reading || [];
   const reviews = data.reviews || [];
+  const followers = data.followers || [];
+  const following = data.following || [];
   const canFollow = state.user && state.user.id_usuario !== user.id_usuario;
 
   readerTitle.textContent = `@${user.username}`;
@@ -646,6 +667,10 @@ function renderReaderProfile(profile) {
         ${user.is_following ? 'Dejar de seguir' : 'Seguir'}
       </button>
     ` : ''}
+    <h3>Le siguen</h3>
+    ${renderPeopleList(followers, 'Todavia no tiene seguidores.')}
+    <h3>Sigue a</h3>
+    ${renderPeopleList(following, 'Todavia no sigue a otros lectores.')}
     <h3>Listas publicas</h3>
     ${lists.length ? lists.map((list) => `
       <div class="list-card">
@@ -951,14 +976,34 @@ grid.addEventListener('click', async (event) => {
       const lists = state.library.lists || [];
 
       if (lists.length) {
-        const options = lists
-          .map((item, index) => `${index + 1}. ${item.nombre_lista}`)
-          .join('\n');
-        const selection = window.prompt(`Elige lista por numero o escribe NUEVA:\n${options}`, '1');
-        const selectedIndex = Number(selection) - 1;
+        const listData = await openActionDialog({
+          title: 'Agregar a lista',
+          body: `
+            <label>
+              Lista
+              <select name="idLista">
+                ${lists.map((item) => `<option value="${item.id_lista}">${escapeHtml(item.nombre_lista)}</option>`).join('')}
+                <option value="new">Crear lista nueva</option>
+              </select>
+            </label>
+            <label>
+              Nombre de lista nueva
+              <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" />
+            </label>
+          `,
+          primaryLabel: 'Agregar',
+        });
 
-        if (selection && selection.toLowerCase() !== 'nueva' && lists[selectedIndex]) {
-          list = lists[selectedIndex];
+        if (!listData) {
+          setStatus('Lista cancelada.');
+          return;
+        }
+
+        if (listData.idLista !== 'new') {
+          list = lists.find((item) => String(item.id_lista) === String(listData.idLista));
+        } else if (listData.nombreLista?.trim()) {
+          const created = await createList(listData.nombreLista.trim());
+          list = created.data;
         }
       }
 

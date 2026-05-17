@@ -2,7 +2,7 @@ const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
 
 const state = {
   books: [],
-  saved: new Set(JSON.parse(localStorage.getItem('booksnexus_saved') || '[]')),
+  saved: new Set(),
   filter: 'all',
   minYear: 0,
   token: localStorage.getItem('booksnexus_token') || '',
@@ -29,6 +29,9 @@ const profileUsername = document.querySelector('#profile-username');
 const profileEmail = document.querySelector('#profile-email');
 const profileAvatar = document.querySelector('#profile-avatar');
 const profileStatus = document.querySelector('#profile-status');
+const profileFavoritesCount = document.querySelector('#profile-favorites-count');
+const profileStatsFavorites = document.querySelector('#profile-stats-favorites');
+const profileLastFavorite = document.querySelector('#profile-last-favorite');
 const logoutButton = document.querySelector('#logout-button');
 const detailDialog = document.querySelector('#book-detail-dialog');
 const detailTitle = document.querySelector('#detail-title');
@@ -109,6 +112,8 @@ function updateMetrics(books) {
   totalBooks.textContent = String(books.length);
   savedBooks.textContent = String(state.saved.size);
   resultCount.textContent = `${books.length} ${books.length === 1 ? 'libro' : 'libros'}`;
+  profileFavoritesCount.textContent = `${state.saved.size} ${state.saved.size === 1 ? 'libro' : 'libros'}`;
+  profileStatsFavorites.textContent = String(state.saved.size);
 }
 
 function renderCover(book) {
@@ -221,6 +226,72 @@ async function getCurrentUser() {
   return response.json();
 }
 
+async function getFavorites() {
+  const response = await fetch(`${apiBaseUrl}/api/favorites`, {
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudieron cargar los favoritos');
+  }
+
+  return response.json();
+}
+
+async function saveFavorite(book) {
+  const response = await fetch(`${apiBaseUrl}/api/favorites`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({
+      openLibraryKey: book.id,
+      title: book.title,
+      authors: book.authors,
+      firstPublishYear: book.firstPublishYear || null,
+      coverUrl: book.coverUrl || null,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo guardar el favorito');
+  }
+
+  return response.json();
+}
+
+async function removeFavorite(book) {
+  const response = await fetch(`${apiBaseUrl}/api/favorites/${encodeURIComponent(book.workKey)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo quitar el favorito');
+  }
+
+  return response.json();
+}
+
+function syncSavedFromFavorites(favorites) {
+  state.saved = new Set((favorites || []).map((book) => String(book.openLibraryKey)));
+  const lastFavorite = favorites?.[0];
+
+  profileLastFavorite.textContent = lastFavorite ? 'Favorito reciente' : 'Sin actividad';
+  profileLastFavorite.parentElement.lastChild.textContent = lastFavorite
+    ? ` ${lastFavorite.title}`
+    : ' Guarda un libro para verlo aqui.';
+
+  persistSavedBooks();
+}
+
 function getInitialsFromUser(user) {
   const source = user?.nombre || user?.username || 'BN';
 
@@ -265,19 +336,25 @@ function renderAuthState() {
 
 async function hydrateUser() {
   if (!state.token) {
+    state.saved = new Set(JSON.parse(localStorage.getItem('booksnexus_saved') || '[]'));
     renderAuthState();
+    renderBooks();
     return;
   }
 
   try {
     const result = await getCurrentUser();
     state.user = result.user;
+    const favorites = await getFavorites();
+    syncSavedFromFavorites(favorites.data || []);
   } catch (error) {
     state.token = '';
+    state.saved = new Set(JSON.parse(localStorage.getItem('booksnexus_saved') || '[]'));
     localStorage.removeItem('booksnexus_token');
   }
 
   renderAuthState();
+  renderBooks();
 }
 
 function setActiveView(viewName) {
@@ -369,7 +446,7 @@ yearFilter.addEventListener('input', (event) => {
   renderBooks();
 });
 
-grid.addEventListener('click', (event) => {
+grid.addEventListener('click', async (event) => {
   const detailButton = event.target.closest('[data-detail]');
 
   if (detailButton) {
@@ -411,22 +488,44 @@ grid.addEventListener('click', (event) => {
   }
 
   const bookId = String(button.dataset.save);
+  const book = state.books.find((item) => item.id === bookId);
 
-  if (state.saved.has(bookId)) {
-    state.saved.delete(bookId);
-  } else {
-    state.saved.add(bookId);
+  if (!book) {
+    return;
   }
 
-  persistSavedBooks();
-  renderBooks();
+  if (!state.user || !state.token) {
+    setStatus('Inicia sesion para guardar libros en tu biblioteca.', true);
+    window.location.href = 'src/login/login.html';
+    return;
+  }
+
+  button.disabled = true;
+
+  try {
+    const result = state.saved.has(bookId)
+      ? await removeFavorite(book)
+      : await saveFavorite(book);
+
+    syncSavedFromFavorites(result.data || []);
+    renderBooks();
+    setStatus(state.saved.has(bookId) ? 'Libro guardado en tu cuenta.' : 'Libro quitado de tus favoritos.');
+  } catch (error) {
+    setStatus(error.message || 'No se pudo actualizar tu biblioteca.', true);
+  } finally {
+    button.disabled = false;
+  }
 });
 
 logoutButton.addEventListener('click', () => {
   state.user = null;
   state.token = '';
+  state.saved = new Set();
   localStorage.removeItem('booksnexus_token');
+  localStorage.removeItem('booksnexus_user');
+  localStorage.removeItem('booksnexus_saved');
   renderAuthState();
+  renderBooks();
 });
 
 detailClose.addEventListener('click', () => detailDialog.close());
@@ -434,4 +533,3 @@ detailClose.addEventListener('click', () => detailDialog.close());
 bindNavigation();
 initializeViewFromHash();
 hydrateUser();
-renderBooks();

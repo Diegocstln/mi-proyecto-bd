@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookNexus | Biblioteca social</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="shortcut icon" href="./src/assets/favicon.png">
+</head>
+
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="BookNexus inicio">
+      <img src="src/assets/logo.png" alt="" width="46" height="46">
+      <span>BookNexus</span>
+    </a>
+
+    <nav class="nav-tabs" aria-label="Navegacion principal">
+      <button class="active" type="button" data-view-target="explorar">Explorar</button>
+      <button type="button" data-view-target="comunidad">Comunidad</button>
+      <button type="button" data-view-target="perfil">Mi perfil</button>
+    </nav>
+
+    <a class="login-button" href="src/login/login.html">Entrar</a>
+  </header>
+
+  <main class="app-shell" id="appRoot"></main>
+
+  <footer class="footer">
+    <span>BookNexus &copy; 2026</span>
+  </footer>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+
+</html>

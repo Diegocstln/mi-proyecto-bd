@@ -21,7 +21,7 @@
         <img class="auth-logo" src="../assets/logo_white.png" alt="BooksNexus" width="150" />
         <p class="eyebrow">BooksNexus</p>
         <h1>Entra a tu biblioteca social</h1>
-        <p>Inicia sesion o crea tu cuenta usando la API privada de BooksNexus.</p>
+        <p>Inicia sesion con tu usuario o crea tu cuenta para guardar lecturas.</p>
       </section>
 
       <section class="auth-panel" aria-label="Formulario de acceso">
@@ -45,9 +45,13 @@
             Usuario
             <input id="username" name="username" type="text" placeholder="mely_reader" autocomplete="username" />
           </label>
-          <label>
+          <label class="register-only" hidden>
             Correo
-            <input id="correo" name="correo" type="email" placeholder="correo@escuela.edu" autocomplete="email" required />
+            <input id="correo" name="correo" type="email" placeholder="correo@escuela.edu" autocomplete="email" />
+          </label>
+          <label>
+            <span id="identifier-label">Usuario o correo</span>
+            <input id="usuario" name="usuario" type="text" placeholder="mely_reader o correo@escuela.edu" autocomplete="username" required />
           </label>
           <label>
             Contrasena
@@ -59,8 +63,10 @@
           </button>
         </form>
 
-        <p class="hint" id="auth-status" role="status">Conectando con http://localhost:3000 por defecto.</p>
+        <p class="hint" id="auth-status" role="status">Listo para entrar a BooksNexus.</p>
       </section>
     </main>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>

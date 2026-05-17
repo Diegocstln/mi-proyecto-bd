@@ -36,6 +36,8 @@ const profileStatsFavorites = document.querySelector('#profile-stats-favorites')
 const profileLastFavorite = document.querySelector('#profile-last-favorite');
 const profileLists = document.querySelector('#profile-lists');
 const profileReading = document.querySelector('#profile-reading');
+const profileView = document.querySelector('#view-perfil');
+const profileLock = document.querySelector('#profile-lock');
 const communityReviewCount = document.querySelector('#community-review-count');
 const communityReaderCount = document.querySelector('#community-reader-count');
 const communityReviews = document.querySelector('#community-reviews');
@@ -44,6 +46,16 @@ const detailDialog = document.querySelector('#book-detail-dialog');
 const detailTitle = document.querySelector('#detail-title');
 const detailBody = document.querySelector('#detail-body');
 const detailClose = document.querySelector('#detail-close');
+const actionDialog = document.querySelector('#action-dialog');
+const actionForm = document.querySelector('#action-form');
+const actionTitle = document.querySelector('#action-title');
+const actionBody = document.querySelector('#action-body');
+const actionPrimary = document.querySelector('#action-primary');
+const actionCancel = document.querySelector('#action-cancel');
+const actionSecondary = document.querySelector('#action-secondary');
+const toastStack = document.querySelector('#toast-stack');
+let searchTimer = 0;
+let activeActionResolver = null;
 
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
@@ -53,6 +65,57 @@ function setStatus(message, isError = false) {
 function setProfileStatus(message, isError = false) {
   profileStatus.textContent = message;
   profileStatus.classList.toggle('error', isError);
+}
+
+function showNotice(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}" aria-hidden="true"></i>
+    <span>${escapeHtml(message)}</span>
+  `;
+  toastStack.appendChild(toast);
+
+  window.setTimeout(() => {
+    toast.classList.add('leaving');
+    window.setTimeout(() => toast.remove(), 220);
+  }, 3200);
+}
+
+function translateError(message) {
+  const translations = {
+    'Username and password are required': 'Escribe tu usuario y contrasena.',
+    'Invalid username or password': 'Usuario o contrasena incorrectos.',
+    'Email and password are required': 'Escribe tu correo y contrasena.',
+    'Invalid email or password': 'Correo o contrasena incorrectos.',
+    'Username or email already exists': 'Ese usuario o correo ya existe.',
+    'Name must be at least 2 characters': 'El nombre debe tener al menos 2 caracteres.',
+    'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres, solo letras, numeros o guion bajo.',
+    'A valid email is required': 'Escribe un correo valido.',
+    'Password must be at least 8 characters': 'La contrasena debe tener al menos 8 caracteres.',
+  };
+
+  return translations[message] || message || 'No se pudo completar la accion.';
+}
+
+function openActionDialog({ title, body, primaryLabel = 'Guardar' }) {
+  actionTitle.textContent = title;
+  actionBody.innerHTML = body;
+  actionPrimary.textContent = primaryLabel;
+  actionDialog.showModal();
+
+  return new Promise((resolve) => {
+    activeActionResolver = resolve;
+  });
+}
+
+function closeActionDialog(value = null) {
+  actionDialog.close();
+
+  if (activeActionResolver) {
+    activeActionResolver(value);
+    activeActionResolver = null;
+  }
 }
 
 function formatAuthors(authors) {
@@ -169,22 +232,25 @@ function renderBooks() {
             <p>Resultado conectado al catalogo externo de BooksNexus.</p>
           </div>
           <div class="book-actions">
-            <span class="rating"><i class="fa-solid fa-bookmark" aria-hidden="true"></i></span>
-            <button class="ghost-button ${isSaved ? 'saved' : ''}" type="button" data-save="${bookId}">
+            <button class="book-action ${isSaved ? 'saved' : ''}" type="button" data-save="${bookId}">
               <i class="fa-solid ${isSaved ? 'fa-check' : 'fa-plus'}" aria-hidden="true"></i>
-              <span>${isSaved ? 'Guardado' : 'Guardar'}</span>
+              <span>${isSaved ? 'Quitar' : 'Favorito'}</span>
             </button>
-            <button class="icon-button" type="button" data-detail="${bookId}" aria-label="Ver detalle de ${title}" title="Ver detalle">
-              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-            </button>
-            <button class="icon-button" type="button" data-reading="${bookId}" aria-label="Marcar leyendo ${title}" title="Marcar leyendo">
+            <button class="book-action" type="button" data-reading="${bookId}">
               <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+              <span>Leyendo</span>
             </button>
-            <button class="icon-button" type="button" data-review="${bookId}" aria-label="Resenar ${title}" title="Resenar">
+            <button class="book-action compact" type="button" data-detail="${bookId}" aria-label="Ver detalle de ${title}" title="Ver detalle">
+              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+              <span>Detalle</span>
+            </button>
+            <button class="book-action compact" type="button" data-review="${bookId}">
               <i class="fa-solid fa-star" aria-hidden="true"></i>
+              <span>Resena</span>
             </button>
-            <button class="icon-button" type="button" data-list-book="${bookId}" aria-label="Agregar a lista ${title}" title="Agregar a lista">
+            <button class="book-action compact" type="button" data-list-book="${bookId}">
               <i class="fa-solid fa-list" aria-hidden="true"></i>
+              <span>Lista</span>
             </button>
           </div>
         </article>
@@ -548,7 +614,9 @@ function renderAuthState() {
     profileEmail.textContent = 'Sin sesion activa';
     profileAvatar.textContent = 'BN';
     logoutButton.hidden = true;
-    setProfileStatus('Conecta con tu cuenta desde la pantalla de acceso.');
+    profileView.classList.add('locked');
+    profileLock.hidden = false;
+    setProfileStatus('Tu biblioteca se desbloquea cuando inicias sesion.');
     return;
   }
 
@@ -557,7 +625,9 @@ function renderAuthState() {
   profileEmail.textContent = state.user.correo;
   profileAvatar.textContent = getInitialsFromUser(state.user);
   logoutButton.hidden = false;
-  setProfileStatus(`Sesion conectada a ${apiBaseUrl}`);
+  profileView.classList.remove('locked');
+  profileLock.hidden = true;
+  setProfileStatus('Sesion activa. Tu biblioteca esta sincronizada.');
 }
 
 async function hydrateUser() {
@@ -631,13 +701,21 @@ function initializeViewFromHash() {
   }
 }
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
+async function performSearch() {
   const query = input.value.trim();
   const button = form.querySelector('button');
 
+  window.clearTimeout(searchTimer);
+
   if (!query) {
+    state.books = [];
+    renderBooks();
+    setStatus('Escribe al menos 3 letras para buscar automaticamente.');
+    return;
+  }
+
+  if (query.length < 3) {
+    setStatus('Escribe al menos 3 letras para iniciar la busqueda.');
     return;
   }
 
@@ -648,14 +726,25 @@ form.addEventListener('submit', async (event) => {
     const result = await searchBooks(query);
     state.books = (result.data || []).map(normalizeBook);
     renderBooks();
-    setStatus(`Busqueda lista desde ${apiBaseUrl}`);
+    setStatus('Busqueda lista.');
   } catch (error) {
     state.books = [];
     renderBooks();
-    setStatus('No se pudo conectar con el backend. Revisa que este encendido.', true);
+    setStatus('No se pudo conectar con BooksNexus. Revisa que el servicio este encendido.', true);
+    showNotice('No se pudo conectar con BooksNexus.', 'error');
   } finally {
     button.disabled = false;
   }
+}
+
+form.addEventListener('submit', (event) => {
+  event.preventDefault();
+  performSearch();
+});
+
+input.addEventListener('input', () => {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(performSearch, 450);
 });
 
 filterButtons.forEach((button) => {
@@ -690,7 +779,7 @@ grid.addEventListener('click', async (event) => {
     getBookDetail(book.workKey)
       .then((result) => {
         const detail = result.data || {};
-        const description = detail.description || 'Open Library no tiene descripcion para este libro.';
+        const description = detail.description || 'El catalogo no tiene descripcion para este libro.';
         const subjects = (detail.subjects || []).slice(0, 8);
 
         detailBody.innerHTML = `
@@ -702,7 +791,7 @@ grid.addEventListener('click', async (event) => {
         `;
       })
       .catch(() => {
-        detailBody.innerHTML = '<p class="status error">No se pudo cargar el detalle. Revisa que el backend este encendido.</p>';
+        detailBody.innerHTML = '<p class="status error">No se pudo cargar el detalle. Revisa que el servicio este encendido.</p>';
       });
 
     return;
@@ -729,7 +818,8 @@ grid.addEventListener('click', async (event) => {
 
   if (!state.user || !state.token) {
     setStatus('Inicia sesion para actualizar tu biblioteca.', true);
-    window.location.href = 'src/login/login.html';
+    showNotice('Inicia sesion para usar tu biblioteca.', 'error');
+    setActiveView('perfil');
     return;
   }
 
@@ -741,22 +831,42 @@ grid.addEventListener('click', async (event) => {
       await markReading(book, 'leyendo');
       await refreshLibrary();
       setStatus('Libro marcado como leyendo.');
+      showNotice('Lo agregamos a tus lecturas.');
       return;
     }
 
     if (reviewButton) {
-      const comentario = window.prompt(`Escribe una resena corta para "${book.title}"`);
-      const calificacion = Number(window.prompt('Calificacion de 1 a 5'));
+      const reviewData = await openActionDialog({
+        title: `Resenar "${book.title}"`,
+        body: `
+          <label>
+            Tu resena
+            <textarea name="comentario" rows="4" placeholder="Que te parecio este libro?" required></textarea>
+          </label>
+          <label>
+            Calificacion
+            <select name="calificacion" required>
+              <option value="5">5 estrellas</option>
+              <option value="4">4 estrellas</option>
+              <option value="3">3 estrellas</option>
+              <option value="2">2 estrellas</option>
+              <option value="1">1 estrella</option>
+            </select>
+          </label>
+        `,
+        primaryLabel: 'Guardar resena',
+      });
 
-      if (!comentario || !calificacion) {
+      if (!reviewData) {
         setStatus('Resena cancelada.');
         return;
       }
 
-      await saveReview(book, comentario, calificacion);
+      await saveReview(book, reviewData.comentario, Number(reviewData.calificacion));
       await refreshLibrary();
       await refreshCommunity();
       setStatus('Resena guardada en tu cuenta.');
+      showNotice('Resena guardada.');
       return;
     }
 
@@ -764,14 +874,23 @@ grid.addEventListener('click', async (event) => {
       let list = state.library.lists?.[0];
 
       if (!list) {
-        const nombreLista = window.prompt('Nombre de la nueva lista', 'Mi lista');
+        const listData = await openActionDialog({
+          title: 'Crear lista',
+          body: `
+            <label>
+              Nombre de la lista
+              <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" required />
+            </label>
+          `,
+          primaryLabel: 'Crear lista',
+        });
 
-        if (!nombreLista) {
+        if (!listData) {
           setStatus('Lista cancelada.');
           return;
         }
 
-        const created = await createList(nombreLista);
+        const created = await createList(listData.nombreLista);
         list = created.data;
       }
 
@@ -779,6 +898,7 @@ grid.addEventListener('click', async (event) => {
       state.library = result.data || state.library;
       renderLibrary();
       setStatus(`Libro agregado a "${list.nombre_lista}".`);
+      showNotice('Libro agregado a tu lista.');
       return;
     }
 
@@ -787,11 +907,28 @@ grid.addEventListener('click', async (event) => {
     syncSavedFromFavorites(result.data || []);
     renderBooks();
     setStatus(state.saved.has(bookId) ? 'Libro guardado en tu cuenta.' : 'Libro quitado de tus favoritos.');
+    showNotice(state.saved.has(bookId) ? 'Libro guardado en favoritos.' : 'Libro quitado de favoritos.');
   } catch (error) {
-    setStatus(error.message || 'No se pudo actualizar tu biblioteca.', true);
+    const message = translateError(error.message) || 'No se pudo actualizar tu biblioteca.';
+    setStatus(message, true);
+    showNotice(message, 'error');
   } finally {
     actionButton.disabled = false;
   }
+});
+
+actionForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const formData = new FormData(actionForm);
+  const values = Object.fromEntries(formData.entries());
+  closeActionDialog(values);
+});
+
+actionCancel.addEventListener('click', () => closeActionDialog(null));
+actionSecondary.addEventListener('click', () => closeActionDialog(null));
+actionDialog.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  closeActionDialog(null);
 });
 
 logoutButton.addEventListener('click', () => {

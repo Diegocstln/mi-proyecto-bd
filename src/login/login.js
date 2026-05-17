@@ -9,14 +9,59 @@ const submitButton = document.querySelector('#submit-button');
 const submitLabel = submitButton.querySelector('span');
 const submitIcon = submitButton.querySelector('i');
 const statusElement = document.querySelector('#auth-status');
+const toastStack = document.querySelector('#toast-stack');
 const nombreInput = document.querySelector('#nombre');
 const usernameInput = document.querySelector('#username');
 const correoInput = document.querySelector('#correo');
+const usuarioInput = document.querySelector('#usuario');
 const passwordInput = document.querySelector('#password');
 
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
   statusElement.classList.toggle('error', isError);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => {
+    const entities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+
+    return entities[character];
+  });
+}
+
+function showNotice(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}" aria-hidden="true"></i>
+    <span>${escapeHtml(message)}</span>
+  `;
+  toastStack.appendChild(toast);
+
+  window.setTimeout(() => {
+    toast.classList.add('leaving');
+    window.setTimeout(() => toast.remove(), 220);
+  }, 3200);
+}
+
+function translateError(message) {
+  const translations = {
+    'Username and password are required': 'Escribe tu usuario y contrasena.',
+    'Invalid username or password': 'Usuario o contrasena incorrectos.',
+    'Username or email already exists': 'Ese usuario o correo ya existe.',
+    'Name must be at least 2 characters': 'El nombre debe tener al menos 2 caracteres.',
+    'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres.',
+    'A valid email is required': 'Escribe un correo valido.',
+    'Password must be at least 8 characters': 'La contrasena debe tener al menos 8 caracteres.',
+  };
+
+  return translations[message] || message || 'No se pudo completar el acceso.';
 }
 
 function setMode(nextMode) {
@@ -32,10 +77,13 @@ function setMode(nextMode) {
 
   nombreInput.required = mode === 'register';
   usernameInput.required = mode === 'register';
+  correoInput.required = mode === 'register';
+  usuarioInput.closest('label').hidden = mode === 'register';
+  usuarioInput.required = mode === 'login';
   passwordInput.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
   submitLabel.textContent = mode === 'register' ? 'Crear cuenta' : 'Entrar';
   submitIcon.className = `fa-solid ${mode === 'register' ? 'fa-user-plus' : 'fa-right-to-bracket'}`;
-  setStatus(mode === 'register' ? 'Crea una cuenta nueva en BooksNexus.' : `Conectando con ${apiBaseUrl}.`);
+  setStatus(mode === 'register' ? 'Crea una cuenta nueva en BooksNexus.' : 'Listo para entrar con usuario o correo y contrasena.');
 }
 
 async function submitAuth(payload) {
@@ -65,13 +113,15 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const payload = {
-    correo: correoInput.value.trim(),
+    usuario: usuarioInput.value.trim(),
     password: passwordInput.value,
   };
 
   if (mode === 'register') {
     payload.nombre = nombreInput.value.trim();
     payload.username = usernameInput.value.trim();
+    payload.correo = correoInput.value.trim();
+    delete payload.usuario;
   }
 
   submitButton.disabled = true;
@@ -82,9 +132,12 @@ form.addEventListener('submit', async (event) => {
     localStorage.setItem('booksnexus_token', result.token);
     localStorage.setItem('booksnexus_user', JSON.stringify(result.user));
     setStatus('Sesion lista. Abriendo tu perfil...');
+    showNotice('Sesion iniciada.');
     window.location.href = '../../index.html#view-perfil';
   } catch (error) {
-    setStatus(error.message || 'No se pudo conectar con el backend.', true);
+    const message = translateError(error.message) || 'No se pudo conectar con BooksNexus.';
+    setStatus(message, true);
+    showNotice(message, 'error');
   } finally {
     submitButton.disabled = false;
   }

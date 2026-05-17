@@ -7,6 +7,8 @@ const state = {
   minYear: 0,
   token: localStorage.getItem('booksnexus_token') || '',
   user: null,
+  library: { reading: [], reviews: [], lists: [] },
+  community: { stats: {}, recentReviews: [], popularBooks: [] },
 };
 
 const form = document.querySelector('#search-form');
@@ -32,6 +34,11 @@ const profileStatus = document.querySelector('#profile-status');
 const profileFavoritesCount = document.querySelector('#profile-favorites-count');
 const profileStatsFavorites = document.querySelector('#profile-stats-favorites');
 const profileLastFavorite = document.querySelector('#profile-last-favorite');
+const profileLists = document.querySelector('#profile-lists');
+const profileReading = document.querySelector('#profile-reading');
+const communityReviewCount = document.querySelector('#community-review-count');
+const communityReaderCount = document.querySelector('#community-reader-count');
+const communityReviews = document.querySelector('#community-reviews');
 const logoutButton = document.querySelector('#logout-button');
 const detailDialog = document.querySelector('#book-detail-dialog');
 const detailTitle = document.querySelector('#detail-title');
@@ -170,6 +177,15 @@ function renderBooks() {
             <button class="icon-button" type="button" data-detail="${bookId}" aria-label="Ver detalle de ${title}" title="Ver detalle">
               <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
             </button>
+            <button class="icon-button" type="button" data-reading="${bookId}" aria-label="Marcar leyendo ${title}" title="Marcar leyendo">
+              <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button" type="button" data-review="${bookId}" aria-label="Resenar ${title}" title="Resenar">
+              <i class="fa-solid fa-star" aria-hidden="true"></i>
+            </button>
+            <button class="icon-button" type="button" data-list-book="${bookId}" aria-label="Agregar a lista ${title}" title="Agregar a lista">
+              <i class="fa-solid fa-list" aria-hidden="true"></i>
+            </button>
           </div>
         </article>
       `;
@@ -240,6 +256,30 @@ async function getFavorites() {
   return response.json();
 }
 
+async function getLibrary() {
+  const response = await fetch(`${apiBaseUrl}/api/library/me`, {
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar la biblioteca');
+  }
+
+  return response.json();
+}
+
+async function getCommunity() {
+  const response = await fetch(`${apiBaseUrl}/api/library/community`);
+
+  if (!response.ok) {
+    throw new Error('No se pudo cargar comunidad');
+  }
+
+  return response.json();
+}
+
 async function saveFavorite(book) {
   const response = await fetch(`${apiBaseUrl}/api/favorites`, {
     method: 'POST',
@@ -280,6 +320,105 @@ async function removeFavorite(book) {
   return response.json();
 }
 
+async function markReading(book, estadoLectura = 'leyendo') {
+  const response = await fetch(`${apiBaseUrl}/api/library/reading`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({
+      estadoLectura,
+      book: {
+        openLibraryKey: book.id,
+        title: book.title,
+        authors: book.authors,
+        firstPublishYear: book.firstPublishYear || null,
+        coverUrl: book.coverUrl || null,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo guardar el historial');
+  }
+
+  return response.json();
+}
+
+async function saveReview(book, comentario, calificacion) {
+  const response = await fetch(`${apiBaseUrl}/api/library/reviews`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({
+      comentario,
+      calificacion,
+      book: {
+        openLibraryKey: book.id,
+        title: book.title,
+        authors: book.authors,
+        firstPublishYear: book.firstPublishYear || null,
+        coverUrl: book.coverUrl || null,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo guardar la resena');
+  }
+
+  return response.json();
+}
+
+async function createList(nombreLista) {
+  const response = await fetch(`${apiBaseUrl}/api/library/lists`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({ nombreLista, privacidad: 'publica' }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo crear la lista');
+  }
+
+  return response.json();
+}
+
+async function addBookToList(idLista, book) {
+  const response = await fetch(`${apiBaseUrl}/api/library/lists/${idLista}/books`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify({
+      book: {
+        openLibraryKey: book.id,
+        title: book.title,
+        authors: book.authors,
+        firstPublishYear: book.firstPublishYear || null,
+        coverUrl: book.coverUrl || null,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo agregar el libro a la lista');
+  }
+
+  return response.json();
+}
+
 function syncSavedFromFavorites(favorites) {
   state.saved = new Set((favorites || []).map((book) => String(book.openLibraryKey)));
   const lastFavorite = favorites?.[0];
@@ -290,6 +429,93 @@ function syncSavedFromFavorites(favorites) {
     : ' Guarda un libro para verlo aqui.';
 
   persistSavedBooks();
+}
+
+function renderLibrary() {
+  const lists = state.library.lists || [];
+  const reading = state.library.reading || [];
+
+  profileLists.innerHTML = lists.length
+    ? lists
+        .map((list) => `
+          <div class="list-card">
+            <span>${escapeHtml(list.nombre_lista)}</span>
+            <strong>${list.total_libros} ${list.total_libros === 1 ? 'libro' : 'libros'}</strong>
+          </div>
+        `)
+        .join('')
+    : '<div class="list-card"><span>Sin listas todavia</span><strong>0 libros</strong></div>';
+
+  profileReading.innerHTML = reading.length
+    ? reading
+        .slice(0, 4)
+        .map((item) => `
+          <div class="timeline-item">
+            <span class="dot"></span>
+            <p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>
+          </div>
+        `)
+        .join('')
+    : '';
+}
+
+function renderCommunity() {
+  const stats = state.community.stats || {};
+  const reviews = state.community.recentReviews || [];
+  const popularBooks = state.community.popularBooks || [];
+
+  communityReviewCount.textContent = String(stats.total_resenas || 0);
+  communityReaderCount.textContent = String(stats.lectores_activos || 0);
+  communityReviews.innerHTML = reviews.length
+    ? reviews
+        .map((review) => `
+          <div class="review">
+            <strong>${escapeHtml(review.nombre || review.username)}</strong>
+            <span>califico "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
+            <p>${escapeHtml(review.comentario)}</p>
+          </div>
+        `)
+        .join('')
+    : `
+      <div class="review">
+        <strong>Sin resenas todavia</strong>
+        <span>Las publicaciones apareceran cuando alguien resene un libro.</span>
+        <p>Busca un libro, inicia sesion y usa el boton de estrella para crear la primera.</p>
+      </div>
+    `;
+
+  rankingList.innerHTML = popularBooks.length
+    ? popularBooks
+        .map((book) => `
+          <li>
+            <strong>${escapeHtml(book.titulo)}</strong><br>
+            <span>${book.total_resenas} resenas · ${book.total_favoritos} favoritos</span>
+          </li>
+        `)
+        .join('')
+    : rankingList.innerHTML;
+}
+
+async function refreshLibrary() {
+  if (!state.token) {
+    state.library = { reading: [], reviews: [], lists: [] };
+    renderLibrary();
+    return;
+  }
+
+  const result = await getLibrary();
+  state.library = result.data || { reading: [], reviews: [], lists: [] };
+  renderLibrary();
+}
+
+async function refreshCommunity() {
+  try {
+    const result = await getCommunity();
+    state.community = result.data || { stats: {}, recentReviews: [], popularBooks: [] };
+    renderCommunity();
+  } catch (error) {
+    renderCommunity();
+  }
 }
 
 function getInitialsFromUser(user) {
@@ -347,6 +573,7 @@ async function hydrateUser() {
     state.user = result.user;
     const favorites = await getFavorites();
     syncSavedFromFavorites(favorites.data || []);
+    await refreshLibrary();
   } catch (error) {
     state.token = '';
     state.saved = new Set(JSON.parse(localStorage.getItem('booksnexus_saved') || '[]'));
@@ -483,11 +710,17 @@ grid.addEventListener('click', async (event) => {
 
   const button = event.target.closest('[data-save]');
 
-  if (!button) {
+  const readingButton = event.target.closest('[data-reading]');
+  const reviewButton = event.target.closest('[data-review]');
+  const listButton = event.target.closest('[data-list-book]');
+
+  if (!button && !readingButton && !reviewButton && !listButton) {
     return;
   }
 
-  const bookId = String(button.dataset.save);
+  const bookId = String(
+    button?.dataset.save || readingButton?.dataset.reading || reviewButton?.dataset.review || listButton?.dataset.listBook
+  );
   const book = state.books.find((item) => item.id === bookId);
 
   if (!book) {
@@ -495,17 +728,61 @@ grid.addEventListener('click', async (event) => {
   }
 
   if (!state.user || !state.token) {
-    setStatus('Inicia sesion para guardar libros en tu biblioteca.', true);
+    setStatus('Inicia sesion para actualizar tu biblioteca.', true);
     window.location.href = 'src/login/login.html';
     return;
   }
 
-  button.disabled = true;
+  const actionButton = button || readingButton || reviewButton || listButton;
+  actionButton.disabled = true;
 
   try {
-    const result = state.saved.has(bookId)
-      ? await removeFavorite(book)
-      : await saveFavorite(book);
+    if (readingButton) {
+      await markReading(book, 'leyendo');
+      await refreshLibrary();
+      setStatus('Libro marcado como leyendo.');
+      return;
+    }
+
+    if (reviewButton) {
+      const comentario = window.prompt(`Escribe una resena corta para "${book.title}"`);
+      const calificacion = Number(window.prompt('Calificacion de 1 a 5'));
+
+      if (!comentario || !calificacion) {
+        setStatus('Resena cancelada.');
+        return;
+      }
+
+      await saveReview(book, comentario, calificacion);
+      await refreshLibrary();
+      await refreshCommunity();
+      setStatus('Resena guardada en tu cuenta.');
+      return;
+    }
+
+    if (listButton) {
+      let list = state.library.lists?.[0];
+
+      if (!list) {
+        const nombreLista = window.prompt('Nombre de la nueva lista', 'Mi lista');
+
+        if (!nombreLista) {
+          setStatus('Lista cancelada.');
+          return;
+        }
+
+        const created = await createList(nombreLista);
+        list = created.data;
+      }
+
+      const result = await addBookToList(list.id_lista, book);
+      state.library = result.data || state.library;
+      renderLibrary();
+      setStatus(`Libro agregado a "${list.nombre_lista}".`);
+      return;
+    }
+
+    const result = state.saved.has(bookId) ? await removeFavorite(book) : await saveFavorite(book);
 
     syncSavedFromFavorites(result.data || []);
     renderBooks();
@@ -513,7 +790,7 @@ grid.addEventListener('click', async (event) => {
   } catch (error) {
     setStatus(error.message || 'No se pudo actualizar tu biblioteca.', true);
   } finally {
-    button.disabled = false;
+    actionButton.disabled = false;
   }
 });
 
@@ -521,10 +798,12 @@ logoutButton.addEventListener('click', () => {
   state.user = null;
   state.token = '';
   state.saved = new Set();
+  state.library = { reading: [], reviews: [], lists: [] };
   localStorage.removeItem('booksnexus_token');
   localStorage.removeItem('booksnexus_user');
   localStorage.removeItem('booksnexus_saved');
   renderAuthState();
+  renderLibrary();
   renderBooks();
 });
 
@@ -533,3 +812,4 @@ detailClose.addEventListener('click', () => detailDialog.close());
 bindNavigation();
 initializeViewFromHash();
 hydrateUser();
+refreshCommunity();

@@ -112,11 +112,11 @@
           <aside class="quick-stats" aria-label="Resumen de comunidad">
             <div>
               <span>Resenas</span>
-              <strong>0</strong>
+              <strong id="community-review-count">0</strong>
             </div>
             <div>
               <span>Lectores activos</span>
-              <strong>0</strong>
+              <strong id="community-reader-count">0</strong>
             </div>
           </aside>
         </div>
@@ -124,11 +124,7 @@
         <div class="activity-grid">
           <article class="feed-panel">
             <h2>Resenas recientes</h2>
-            <div class="review">
-              <strong>Sin resenas todavia</strong>
-              <span>Las publicaciones apareceran cuando conectemos resenas en la base de datos.</span>
-              <p>Por ahora ya puedes registrar usuarios y guardar favoritos reales.</p>
-            </div>
+            <div id="community-reviews"></div>
           </article>
 
           <article class="ranking-panel">
@@ -165,6 +161,7 @@
               <span>Favoritos guardados</span>
               <strong id="profile-favorites-count">0 libros</strong>
             </div>
+            <div id="profile-lists"></div>
           </article>
 
           <article>
@@ -173,6 +170,7 @@
               <span class="dot"></span>
               <p><strong id="profile-last-favorite">Sin actividad</strong> Guarda un libro para verlo aqui.</p>
             </div>
+            <div id="profile-reading"></div>
           </article>
 
           <article>

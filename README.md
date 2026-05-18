@@ -12,6 +12,8 @@ BooksNexus es una red social de libros. Este frontend consume la API privada del
 - Detalle de libro con `GET /api/books/:workKey`.
 - Registro e inicio de sesion con `POST /api/auth/register` y `POST /api/auth/login`.
 - Perfil autenticado con `GET /api/auth/me`.
+- Edicion y eliminacion de perfil con `PATCH /api/auth/me` y `DELETE /api/auth/me`.
+- CRUD de listas con `POST`, `GET`, `PATCH` y `DELETE /api/library/lists`.
 
 ## Desarrollo local
 

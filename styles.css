@@ -609,6 +609,35 @@ h2 {
   min-height: 42px;
 }
 
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.danger-button {
+  color: #9f1239;
+  border-color: rgba(159, 18, 57, 0.28);
+}
+
+.section-head,
+.list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.list-actions {
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
 .progress-bar {
   height: 10px;
   overflow: hidden;

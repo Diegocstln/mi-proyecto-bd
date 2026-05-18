@@ -151,10 +151,20 @@
             <h1 id="profile-name">Mi perfil</h1>
             <p id="profile-username">Inicia sesion para ver tus datos reales.</p>
           </div>
-          <button class="ghost-button logout-button" id="logout-button" type="button" hidden>
-            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
-            <span>Salir</span>
-          </button>
+          <div class="profile-actions">
+            <button class="ghost-button" id="profile-edit-button" type="button" hidden>
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              <span>Editar</span>
+            </button>
+            <button class="ghost-button danger-button" id="profile-delete-button" type="button" hidden>
+              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              <span>Eliminar</span>
+            </button>
+            <button class="ghost-button logout-button" id="logout-button" type="button" hidden>
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+              <span>Salir</span>
+            </button>
+          </div>
         </div>
 
         <div class="reading-now">
@@ -177,7 +187,12 @@
 
         <div class="library-board">
           <article>
-            <h2>Listas personalizadas</h2>
+            <div class="section-head">
+              <h2>Listas personalizadas</h2>
+              <button class="icon-button" id="list-create-button" type="button" aria-label="Crear lista" title="Crear lista" hidden>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              </button>
+            </div>
             <div class="list-card">
               <span>Favoritos guardados</span>
               <strong id="profile-favorites-count">0 libros</strong>

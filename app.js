@@ -40,6 +40,9 @@ const profileFollowers = document.querySelector('#profile-followers');
 const profileFollowing = document.querySelector('#profile-following');
 const profileView = document.querySelector('#view-perfil');
 const profileLock = document.querySelector('#profile-lock');
+const profileEditButton = document.querySelector('#profile-edit-button');
+const profileDeleteButton = document.querySelector('#profile-delete-button');
+const listCreateButton = document.querySelector('#list-create-button');
 const communityReviewCount = document.querySelector('#community-review-count');
 const communityReaderCount = document.querySelector('#community-reader-count');
 const communityReviews = document.querySelector('#community-reviews');
@@ -116,6 +119,10 @@ function translateError(message) {
     'Review comment must be at least 3 characters': 'La resena necesita al menos 3 caracteres.',
     'List name must be at least 2 characters': 'El nombre de la lista necesita al menos 2 caracteres.',
     'Invalid privacy value': 'La privacidad de la lista no es valida.',
+    'Biography must be 500 characters or less': 'La biografia debe tener 500 caracteres o menos.',
+    'Avatar URL must be a valid URL': 'La URL del avatar debe ser valida.',
+    'List description must be 500 characters or less': 'La descripcion de la lista debe tener 500 caracteres o menos.',
+    'List not found': 'No encontramos esa lista.',
   };
 
   return translations[message] || message || 'No se pudo completar la accion.';
@@ -123,9 +130,9 @@ function translateError(message) {
 
 function openActionDialog({ title, body, primaryLabel = 'Guardar' }) {
   actionTitle.textContent = title;
+  actionForm.reset();
   actionBody.innerHTML = body;
   actionPrimary.textContent = primaryLabel;
-  actionForm.reset();
   actionDialog.showModal();
 
   return new Promise((resolve) => {
@@ -332,6 +339,39 @@ async function getCurrentUser() {
   return response.json();
 }
 
+async function updateProfile(payload) {
+  const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || 'No se pudo actualizar el perfil');
+  }
+
+  return data;
+}
+
+async function deleteProfile() {
+  const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo eliminar el perfil');
+  }
+}
+
 async function getFavorites() {
   const response = await fetch(`${apiBaseUrl}/api/favorites`, {
     headers: {
@@ -503,18 +543,56 @@ async function saveReview(book, comentario, calificacion) {
 }
 
 async function createList(nombreLista) {
+  return saveList({ nombreLista, privacidad: 'publica' });
+}
+
+async function saveList(payload) {
   const response = await fetch(`${apiBaseUrl}/api/library/lists`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${state.token}`,
     },
-    body: JSON.stringify({ nombreLista, privacidad: 'publica' }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'No se pudo crear la lista');
+  }
+
+  return response.json();
+}
+
+async function updateList(idLista, payload) {
+  const response = await fetch(`${apiBaseUrl}/api/library/lists/${idLista}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo actualizar la lista');
+  }
+
+  return response.json();
+}
+
+async function deleteList(idLista) {
+  const response = await fetch(`${apiBaseUrl}/api/library/lists/${idLista}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo eliminar la lista');
   }
 
   return response.json();
@@ -593,9 +671,19 @@ function renderLibrary() {
   profileLists.innerHTML = lists.length
     ? lists
         .map((list) => `
-          <div class="list-card">
-            <span>${escapeHtml(list.nombre_lista)}</span>
-            <strong>${list.total_libros} ${list.total_libros === 1 ? 'libro' : 'libros'}</strong>
+          <div class="list-card" data-list-id="${list.id_lista}">
+            <div>
+              <span>${escapeHtml(list.nombre_lista)}</span>
+              <strong>${list.total_libros} ${list.total_libros === 1 ? 'libro' : 'libros'} - ${escapeHtml(list.privacidad)}</strong>
+            </div>
+            <div class="list-actions">
+              <button class="icon-button" type="button" data-list-edit="${list.id_lista}" aria-label="Editar ${escapeHtml(list.nombre_lista)}" title="Editar lista">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              </button>
+              <button class="icon-button" type="button" data-list-delete="${list.id_lista}" aria-label="Eliminar ${escapeHtml(list.nombre_lista)}" title="Eliminar lista">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
         `)
         .join('')
@@ -860,6 +948,9 @@ function renderAuthState() {
     profileEmail.textContent = 'Sin sesion activa';
     profileAvatar.textContent = 'BN';
     logoutButton.hidden = true;
+    profileEditButton.hidden = true;
+    profileDeleteButton.hidden = true;
+    listCreateButton.hidden = true;
     profileView.classList.add('locked');
     profileLock.hidden = false;
     setProfileStatus('Tu biblioteca se desbloquea cuando inicias sesion.');
@@ -871,9 +962,12 @@ function renderAuthState() {
   profileEmail.textContent = state.user.correo;
   profileAvatar.textContent = getInitialsFromUser(state.user);
   logoutButton.hidden = false;
+  profileEditButton.hidden = false;
+  profileDeleteButton.hidden = false;
+  listCreateButton.hidden = false;
   profileView.classList.remove('locked');
   profileLock.hidden = true;
-  setProfileStatus('Sesion activa. Tu biblioteca esta sincronizada.');
+  setProfileStatus(state.user.biografia || 'Sesion activa. Tu biblioteca esta sincronizada.');
 }
 
 async function hydrateUser() {
@@ -945,6 +1039,19 @@ function initializeViewFromHash() {
   if (viewName && document.querySelector(`[data-view="${viewName}"]`)) {
     setActiveView(viewName);
   }
+}
+
+function clearSession() {
+  state.user = null;
+  state.token = '';
+  state.saved = new Set();
+  state.library = { reading: [], reviews: [], lists: [] };
+  localStorage.removeItem('booksnexus_token');
+  localStorage.removeItem('booksnexus_user');
+  localStorage.removeItem('booksnexus_saved');
+  renderAuthState();
+  renderLibrary();
+  renderBooks();
 }
 
 async function performSearch() {
@@ -1225,6 +1332,224 @@ grid.addEventListener('click', async (event) => {
   }
 });
 
+profileEditButton.addEventListener('click', async () => {
+  if (!state.user) {
+    return;
+  }
+
+  const profileData = await openActionDialog({
+    title: 'Editar perfil',
+    body: `
+      <label>
+        Nombre
+        <input name="nombre" type="text" value="${escapeHtml(state.user.nombre || '')}" required />
+      </label>
+      <label>
+        Usuario
+        <input name="username" type="text" value="${escapeHtml(state.user.username || '')}" required />
+      </label>
+      <label>
+        Correo
+        <input name="correo" type="email" value="${escapeHtml(state.user.correo || '')}" required />
+      </label>
+      <label>
+        Biografia
+        <textarea name="biografia" rows="4" maxlength="500" placeholder="Cuenta que te gusta leer.">${escapeHtml(state.user.biografia || '')}</textarea>
+      </label>
+      <label>
+        Avatar URL
+        <input name="avatarUrl" type="url" value="${escapeHtml(state.user.avatar_url || '')}" placeholder="https://..." />
+      </label>
+    `,
+    primaryLabel: 'Guardar perfil',
+  });
+
+  if (!profileData) {
+    return;
+  }
+
+  profileEditButton.disabled = true;
+
+  try {
+    const result = await updateProfile(profileData);
+    state.user = result.user;
+    state.token = result.token || state.token;
+    localStorage.setItem('booksnexus_token', state.token);
+    localStorage.setItem('booksnexus_user', JSON.stringify(state.user));
+    renderAuthState();
+    await refreshCommunity();
+    showNotice('Perfil actualizado.');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error');
+  } finally {
+    profileEditButton.disabled = false;
+  }
+});
+
+profileDeleteButton.addEventListener('click', async () => {
+  if (!state.user) {
+    return;
+  }
+
+  const confirmation = await openActionDialog({
+    title: 'Eliminar perfil',
+    body: `
+      <p class="status error">Esta accion eliminara tu cuenta, favoritos, lecturas, resenas, listas y seguimientos.</p>
+      <label>
+        Confirmacion
+        <select name="confirm" required>
+          <option value="">Cancelar</option>
+          <option value="delete">Eliminar mi cuenta</option>
+        </select>
+      </label>
+    `,
+    primaryLabel: 'Eliminar',
+  });
+
+  if (confirmation?.confirm !== 'delete') {
+    return;
+  }
+
+  profileDeleteButton.disabled = true;
+
+  try {
+    await deleteProfile();
+    clearSession();
+    await refreshCommunity();
+    showNotice('Perfil eliminado.');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error');
+  } finally {
+    profileDeleteButton.disabled = false;
+  }
+});
+
+listCreateButton.addEventListener('click', async () => {
+  if (!state.user) {
+    return;
+  }
+
+  const listData = await openActionDialog({
+    title: 'Crear lista',
+    body: `
+      <label>
+        Nombre
+        <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" required />
+      </label>
+      <label>
+        Descripcion
+        <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional"></textarea>
+      </label>
+      <label>
+        Privacidad
+        <select name="privacidad">
+          <option value="publica">Publica</option>
+          <option value="privada">Privada</option>
+        </select>
+      </label>
+    `,
+    primaryLabel: 'Crear lista',
+  });
+
+  if (!listData) {
+    return;
+  }
+
+  listCreateButton.disabled = true;
+
+  try {
+    await saveList(listData);
+    await refreshLibrary();
+    showNotice('Lista creada.');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error');
+  } finally {
+    listCreateButton.disabled = false;
+  }
+});
+
+profileLists.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-list-edit]');
+  const deleteButton = event.target.closest('[data-list-delete]');
+
+  if (!editButton && !deleteButton) {
+    return;
+  }
+
+  const idLista = Number(editButton?.dataset.listEdit || deleteButton?.dataset.listDelete);
+  const list = (state.library.lists || []).find((item) => Number(item.id_lista) === idLista);
+
+  if (!list) {
+    return;
+  }
+
+  if (editButton) {
+    const listData = await openActionDialog({
+      title: 'Editar lista',
+      body: `
+        <label>
+          Nombre
+          <input name="nombreLista" type="text" value="${escapeHtml(list.nombre_lista || '')}" required />
+        </label>
+        <label>
+          Descripcion
+          <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional">${escapeHtml(list.descripcion || '')}</textarea>
+        </label>
+        <label>
+          Privacidad
+          <select name="privacidad">
+            <option value="publica" ${list.privacidad === 'publica' ? 'selected' : ''}>Publica</option>
+            <option value="privada" ${list.privacidad === 'privada' ? 'selected' : ''}>Privada</option>
+          </select>
+        </label>
+      `,
+      primaryLabel: 'Guardar lista',
+    });
+
+    if (!listData) {
+      return;
+    }
+
+    editButton.disabled = true;
+
+    try {
+      const result = await updateList(idLista, listData);
+      state.library = result.data || state.library;
+      renderLibrary();
+      showNotice('Lista actualizada.');
+    } catch (error) {
+      showNotice(translateError(error.message), 'error');
+    } finally {
+      editButton.disabled = false;
+    }
+
+    return;
+  }
+
+  const confirmation = await openActionDialog({
+    title: 'Eliminar lista',
+    body: `<p class="status error">Se eliminara "${escapeHtml(list.nombre_lista)}" y sus libros guardados en esa lista.</p>`,
+    primaryLabel: 'Eliminar lista',
+  });
+
+  if (!confirmation) {
+    return;
+  }
+
+  deleteButton.disabled = true;
+
+  try {
+    const result = await deleteList(idLista);
+    state.library = result.data || state.library;
+    renderLibrary();
+    showNotice('Lista eliminada.');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error');
+  } finally {
+    deleteButton.disabled = false;
+  }
+});
+
 actionForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(actionForm);
@@ -1240,16 +1565,7 @@ actionDialog.addEventListener('cancel', (event) => {
 });
 
 logoutButton.addEventListener('click', () => {
-  state.user = null;
-  state.token = '';
-  state.saved = new Set();
-  state.library = { reading: [], reviews: [], lists: [] };
-  localStorage.removeItem('booksnexus_token');
-  localStorage.removeItem('booksnexus_user');
-  localStorage.removeItem('booksnexus_saved');
-  renderAuthState();
-  renderLibrary();
-  renderBooks();
+  clearSession();
 });
 
 detailClose.addEventListener('click', () => detailDialog.close());

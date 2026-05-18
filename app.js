@@ -44,6 +44,7 @@ const communityReviewCount = document.querySelector('#community-review-count');
 const communityReaderCount = document.querySelector('#community-reader-count');
 const communityReviews = document.querySelector('#community-reviews');
 const readerList = document.querySelector('#reader-list');
+const communityReaderSearch = document.querySelector('#reader-search');
 const logoutButton = document.querySelector('#logout-button');
 const detailDialog = document.querySelector('#book-detail-dialog');
 const detailTitle = document.querySelector('#detail-title');
@@ -58,6 +59,7 @@ const actionCancel = document.querySelector('#action-cancel');
 const actionSecondary = document.querySelector('#action-secondary');
 const toastStack = document.querySelector('#toast-stack');
 let searchTimer = 0;
+let readerSearchTimer = 0;
 let activeActionResolver = null;
 const readerDialog = document.querySelector('#reader-dialog');
 const readerTitle = document.querySelector('#reader-title');
@@ -74,12 +76,20 @@ function setProfileStatus(message, isError = false) {
   profileStatus.classList.toggle('error', isError);
 }
 
-function showNotice(message, type = 'info') {
+function showNotice(message, type = 'info', title = '') {
+  const defaults = {
+    info: 'Listo',
+    success: 'Listo',
+    error: 'Algo no salio bien',
+  };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `
     <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}" aria-hidden="true"></i>
-    <span>${escapeHtml(message)}</span>
+    <div>
+      <strong>${escapeHtml(title || defaults[type] || defaults.info)}</strong>
+      <span>${escapeHtml(message)}</span>
+    </div>
   `;
   toastStack.appendChild(toast);
 
@@ -100,6 +110,12 @@ function translateError(message) {
     'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres, solo letras, numeros o guion bajo.',
     'A valid email is required': 'Escribe un correo valido.',
     'Password must be at least 8 characters': 'La contrasena debe tener al menos 8 caracteres.',
+    'You cannot follow yourself': 'No puedes seguirte a ti mismo.',
+    'Invalid reading status': 'El estado de lectura no es valido.',
+    'Rating must be an integer between 1 and 5': 'La calificacion debe ser de 1 a 5.',
+    'Review comment must be at least 3 characters': 'La resena necesita al menos 3 caracteres.',
+    'List name must be at least 2 characters': 'El nombre de la lista necesita al menos 2 caracteres.',
+    'Invalid privacy value': 'La privacidad de la lista no es valida.',
   };
 
   return translations[message] || message || 'No se pudo completar la accion.';
@@ -109,6 +125,7 @@ function openActionDialog({ title, body, primaryLabel = 'Guardar' }) {
   actionTitle.textContent = title;
   actionBody.innerHTML = body;
   actionPrimary.textContent = primaryLabel;
+  actionForm.reset();
   actionDialog.showModal();
 
   return new Promise((resolve) => {
@@ -353,6 +370,16 @@ async function getCommunity() {
   return response.json();
 }
 
+async function searchReaders(query = '') {
+  const response = await fetch(`${apiBaseUrl}/api/library/users?q=${encodeURIComponent(query)}`);
+
+  if (!response.ok) {
+    throw new Error('No se pudieron cargar lectores');
+  }
+
+  return response.json();
+}
+
 async function getReaderProfile(idUsuario) {
   const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
   const response = await fetch(`${apiBaseUrl}/api/library/users/${idUsuario}`, { headers });
@@ -544,6 +571,19 @@ function renderPeopleList(people, emptyText) {
     : `<p class="status">${emptyText}</p>`;
 }
 
+function formatCount(value, singular, plural) {
+  const number = Number(value) || 0;
+  return `${number} ${number === 1 ? singular : plural}`;
+}
+
+function renderReaderMeta(user) {
+  if ('total_resenas' in user || 'total_favoritos' in user) {
+    return `${formatCount(user.total_resenas, 'resena', 'resenas')} &middot; ${formatCount(user.total_favoritos, 'favorito', 'favoritos')}`;
+  }
+
+  return `${formatCount(user.public_lists, 'lista publica', 'listas publicas')} &middot; ${formatCount(user.followers, 'seguidor', 'seguidores')}`;
+}
+
 function renderLibrary() {
   const lists = state.library.lists || [];
   const reading = state.library.reading || [];
@@ -624,6 +664,22 @@ function renderCommunity() {
         `)
         .join('')
     : '<li><strong>Sin lectores todavia</strong><br><span>Crea usuarios y actividad para llenar esta lista.</span></li>';
+
+  renderReaders(activeUsers, 'Crea usuarios y actividad para llenar esta lista.');
+}
+
+function renderReaders(users, emptyText = 'No encontramos lectores con esa busqueda.') {
+  readerList.innerHTML = users.length
+    ? users
+        .map((user) => `
+          <li>
+            <strong>@${escapeHtml(user.username)}</strong><br>
+            <span>${escapeHtml(user.nombre)} &middot; ${renderReaderMeta(user)}</span><br>
+            <button class="ghost-button" type="button" data-reader="${user.id_usuario}">Ver perfil</button>
+          </li>
+        `)
+        .join('')
+    : `<li><strong>Sin lectores todavia</strong><br><span>${escapeHtml(emptyText)}</span></li>`;
 }
 
 async function refreshLibrary() {
@@ -645,6 +701,18 @@ async function refreshCommunity() {
     renderCommunity();
   } catch (error) {
     renderCommunity();
+  }
+}
+
+async function performReaderSearch() {
+  const query = communityReaderSearch?.value.trim() || '';
+
+  try {
+    const result = await searchReaders(query);
+    renderReaders(result.data || [], query ? 'Prueba con otro usuario o nombre.' : 'Crea usuarios y actividad para llenar esta lista.');
+  } catch (error) {
+    renderReaders([], 'No se pudo consultar lectores ahora mismo.');
+    showNotice('Revisa que el backend este encendido antes de buscar lectores.', 'error', 'Lectores no disponibles');
   }
 }
 
@@ -682,6 +750,83 @@ function renderReaderProfile(profile) {
     ${reading.length ? reading.map((item) => `<p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>`).join('') : '<p class="status">Sin historial publico.</p>'}
     <h3>Resenas</h3>
     ${reviews.length ? reviews.map((review) => `<p><strong>${review.calificacion}/5</strong> ${escapeHtml(review.titulo)}: ${escapeHtml(review.comentario)}</p>`).join('') : '<p class="status">Sin resenas.</p>'}
+  `;
+}
+
+function renderReaderProfileCard(profile) {
+  const data = profile.data;
+  const user = data.user;
+  const lists = data.lists || [];
+  const reading = data.reading || [];
+  const reviews = data.reviews || [];
+  const followers = data.followers || [];
+  const following = data.following || [];
+  const canFollow = state.user && state.user.id_usuario !== user.id_usuario;
+
+  readerTitle.textContent = `${user.nombre || user.username}`;
+  readerBody.innerHTML = `
+    <div class="reader-profile">
+      <section class="reader-hero">
+        <div class="reader-avatar" aria-hidden="true">${escapeHtml(getInitialsFromUser(user))}</div>
+        <div>
+          <h3>${escapeHtml(user.nombre || user.username)}</h3>
+          <p>@${escapeHtml(user.username)}${user.biografia ? ` &middot; ${escapeHtml(user.biografia)}` : ''}</p>
+        </div>
+        ${canFollow ? `
+          <button class="ghost-button ${user.is_following ? 'saved' : ''}" type="button" data-follow-reader="${user.id_usuario}" data-following="${user.is_following}">
+            <i class="fa-solid ${user.is_following ? 'fa-user-check' : 'fa-user-plus'}" aria-hidden="true"></i>
+            <span>${user.is_following ? 'Siguiendo' : 'Seguir'}</span>
+          </button>
+        ` : ''}
+      </section>
+
+      <section class="profile-stat-row" aria-label="Actividad publica">
+        <div><strong>${formatCount(user.followers, 'seguidor', 'seguidores')}</strong><span>Le siguen</span></div>
+        <div><strong>${formatCount(user.following, 'siguiendo', 'siguiendo')}</strong><span>Sigue</span></div>
+        <div><strong>${formatCount(lists.length, 'lista', 'listas')}</strong><span>Publicas</span></div>
+      </section>
+
+      <section class="reader-section">
+        <h3>Listas publicas</h3>
+        ${lists.length ? lists.map((list) => `
+          <div class="list-card">
+            <span>${escapeHtml(list.nombre_lista)}</span>
+            <strong>${formatCount(list.books.length, 'libro', 'libros')}</strong>
+          </div>
+        `).join('') : '<p class="status">Este lector aun no tiene listas publicas.</p>'}
+      </section>
+
+      <section class="reader-section">
+        <h3>Lectura reciente</h3>
+        <div class="reader-book-list">
+          ${reading.length ? reading.map((item) => `
+            <div class="reader-book-item">
+              <strong>${escapeHtml(item.titulo)}</strong>
+              <span class="tag">${escapeHtml(item.estado_lectura)}</span>
+            </div>
+          `).join('') : '<p class="status">Sin historial publico por ahora.</p>'}
+        </div>
+      </section>
+
+      <section class="reader-section">
+        <h3>Resenas</h3>
+        <div class="reader-book-list">
+          ${reviews.length ? reviews.map((review) => `
+            <div class="review">
+              <strong>${escapeHtml(review.titulo)}</strong>
+              <span>${escapeHtml(review.calificacion)}/5 estrellas</span>
+              <p>${escapeHtml(review.comentario)}</p>
+            </div>
+          `).join('') : '<p class="status">Todavia no ha publicado resenas.</p>'}
+        </div>
+      </section>
+
+      <section class="reader-section">
+        <h3>Red lectora</h3>
+        <div>${renderPeopleList(followers, 'Todavia no tiene seguidores.')}</div>
+        <div>${renderPeopleList(following, 'Todavia no sigue a otros lectores.')}</div>
+      </section>
+    </div>
   `;
 }
 
@@ -832,7 +977,7 @@ async function performSearch() {
     state.books = [];
     renderBooks();
     setStatus('No se pudo conectar con BooksNexus. Revisa que el servicio este encendido.', true);
-    showNotice('No se pudo conectar con BooksNexus.', 'error');
+    showNotice('Revisa que el backend este encendido en el puerto configurado.', 'error', 'BooksNexus no responde');
   } finally {
     button.disabled = false;
   }
@@ -861,6 +1006,11 @@ yearFilter.addEventListener('input', (event) => {
   state.minYear = Number(event.target.value);
   yearValue.textContent = state.minYear ? `Desde ${state.minYear}` : 'Cualquier ano';
   renderBooks();
+});
+
+communityReaderSearch?.addEventListener('input', () => {
+  window.clearTimeout(readerSearchTimer);
+  readerSearchTimer = window.setTimeout(performReaderSearch, 350);
 });
 
 grid.addEventListener('click', async (event) => {
@@ -919,7 +1069,7 @@ grid.addEventListener('click', async (event) => {
 
   if (!state.user || !state.token) {
     setStatus('Inicia sesion para actualizar tu biblioteca.', true);
-    showNotice('Inicia sesion para usar tu biblioteca.', 'error');
+    showNotice('Entra a tu cuenta para guardar favoritos, lecturas, resenas y listas.', 'error', 'Necesitas sesion');
     setActiveView('perfil');
     return;
   }
@@ -932,7 +1082,7 @@ grid.addEventListener('click', async (event) => {
       await markReading(book, 'leyendo');
       await refreshLibrary();
       setStatus('Libro marcado como leyendo.');
-      showNotice('Lo agregamos a tus lecturas.');
+      showNotice(`"${book.title}" aparece ahora en tu historial.`, 'success', 'Lectura actualizada');
       return;
     }
 
@@ -967,7 +1117,7 @@ grid.addEventListener('click', async (event) => {
       await refreshLibrary();
       await refreshCommunity();
       setStatus('Resena guardada en tu cuenta.');
-      showNotice('Resena guardada.');
+      showNotice(`Tu resena de "${book.title}" ya se ve en comunidad.`, 'success', 'Resena publicada');
       return;
     }
 
@@ -977,21 +1127,36 @@ grid.addEventListener('click', async (event) => {
 
       if (lists.length) {
         const listData = await openActionDialog({
-          title: 'Agregar a lista',
+          title: `Guardar "${book.title}"`,
           body: `
+            <p class="dialog-intro">Elige una lista existente o crea una nueva sin salir del libro.</p>
+            <div class="list-picker" role="radiogroup" aria-label="Listas disponibles">
+              ${lists.map((item, index) => `
+                <label class="list-option">
+                  <input type="radio" name="idLista" value="${item.id_lista}" ${index === 0 ? 'checked' : ''} />
+                  <span>
+                    <strong>${escapeHtml(item.nombre_lista)}</strong>
+                    <span>${formatCount(item.total_libros, 'libro guardado', 'libros guardados')}</span>
+                  </span>
+                  <i class="fa-solid fa-bookmark" aria-hidden="true"></i>
+                </label>
+              `).join('')}
+              <label class="list-option">
+                <input type="radio" name="idLista" value="new" />
+                <span>
+                  <strong>Crear lista nueva</strong>
+                  <span>Perfecto para separar pendientes, favoritos o recomendaciones.</span>
+                </span>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              </label>
+            </div>
             <label>
-              Lista
-              <select name="idLista">
-                ${lists.map((item) => `<option value="${item.id_lista}">${escapeHtml(item.nombre_lista)}</option>`).join('')}
-                <option value="new">Crear lista nueva</option>
-              </select>
+              Nombre si vas a crear una nueva
+              <input name="nombreLista" type="text" placeholder="Lecturas para vacaciones" />
             </label>
-            <label>
-              Nombre de lista nueva
-              <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" />
-            </label>
+            <span class="inline-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Si eliges una lista existente puedes dejar el nombre vacio.</span>
           `,
-          primaryLabel: 'Agregar',
+          primaryLabel: 'Guardar en lista',
         });
 
         if (!listData) {
@@ -1004,19 +1169,24 @@ grid.addEventListener('click', async (event) => {
         } else if (listData.nombreLista?.trim()) {
           const created = await createList(listData.nombreLista.trim());
           list = created.data;
+        } else {
+          setStatus('Ponle nombre a tu lista nueva.', true);
+          showNotice('Escribe un nombre para crear la lista y guardar el libro.', 'error', 'Falta el nombre');
+          return;
         }
       }
 
       if (!list) {
         const listData = await openActionDialog({
-          title: 'Crear lista',
+          title: `Primera lista para "${book.title}"`,
           body: `
+            <p class="dialog-intro">Aun no tienes listas. Crea una y guardamos el libro ahi mismo.</p>
             <label>
               Nombre de la lista
               <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" required />
             </label>
           `,
-          primaryLabel: 'Crear lista',
+          primaryLabel: 'Crear y guardar',
         });
 
         if (!listData) {
@@ -1032,7 +1202,7 @@ grid.addEventListener('click', async (event) => {
       state.library = result.data || state.library;
       renderLibrary();
       setStatus(`Libro agregado a "${list.nombre_lista}".`);
-      showNotice('Libro agregado a tu lista.');
+      showNotice(`"${book.title}" quedo en "${list.nombre_lista}".`, 'success', 'Guardado en lista');
       return;
     }
 
@@ -1041,11 +1211,15 @@ grid.addEventListener('click', async (event) => {
     syncSavedFromFavorites(result.data || []);
     renderBooks();
     setStatus(state.saved.has(bookId) ? 'Libro guardado en tu cuenta.' : 'Libro quitado de tus favoritos.');
-    showNotice(state.saved.has(bookId) ? 'Libro guardado en favoritos.' : 'Libro quitado de favoritos.');
+    showNotice(
+      state.saved.has(bookId) ? `"${book.title}" quedo en tus favoritos.` : `"${book.title}" salio de tus favoritos.`,
+      'success',
+      state.saved.has(bookId) ? 'Favorito guardado' : 'Favorito actualizado'
+    );
   } catch (error) {
     const message = translateError(error.message) || 'No se pudo actualizar tu biblioteca.';
     setStatus(message, true);
-    showNotice(message, 'error');
+    showNotice(message, 'error', 'No se pudo guardar');
   } finally {
     actionButton.disabled = false;
   }
@@ -1092,7 +1266,7 @@ readerList.addEventListener('click', async (event) => {
     readerBody.innerHTML = '<p class="status">Cargando perfil...</p>';
     readerDialog.showModal();
     const profile = await getReaderProfile(button.dataset.reader);
-    renderReaderProfile(profile);
+    renderReaderProfileCard(profile);
   } catch (error) {
     readerBody.innerHTML = '<p class="status error">No se pudo cargar el perfil.</p>';
   }
@@ -1114,10 +1288,11 @@ readerBody.addEventListener('click', async (event) => {
 
   try {
     const profile = await followReader(button.dataset.followReader, button.dataset.following === 'true');
-    renderReaderProfile(profile);
+    renderReaderProfileCard(profile);
     await refreshCommunity();
+    showNotice('Tu red de lectores se actualizo correctamente.', 'success', 'Seguimiento actualizado');
   } catch (error) {
-    button.textContent = error.message || 'Error';
+    showNotice(translateError(error.message), 'error', 'No se pudo actualizar');
   } finally {
     button.disabled = false;
   }

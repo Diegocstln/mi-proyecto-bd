@@ -90,6 +90,20 @@
               <input id="year-filter" type="range" min="0" max="2026" step="1" value="0" />
             </label>
             <output id="year-value">Cualquier ano</output>
+            <label>
+              Categoria
+              <select id="category-filter">
+                <option value="">Todas</option>
+                <option value="fiction">Ficcion</option>
+                <option value="fantasy">Fantasia</option>
+                <option value="romance">Romance</option>
+                <option value="mystery">Misterio</option>
+                <option value="science_fiction">Ciencia ficcion</option>
+                <option value="history">Historia</option>
+                <option value="young_adult">Young adult</option>
+                <option value="biography">Biografia</option>
+              </select>
+            </label>
           </aside>
 
           <section class="results" aria-labelledby="results-title">
@@ -170,7 +184,7 @@
         <div class="reading-now">
           <span id="profile-email">Sin sesion activa</span>
           <strong id="profile-status">Conecta con tu cuenta desde la pantalla de acceso.</strong>
-          <div class="progress-bar"><span style="width: 68%"></span></div>
+          <div class="profile-summary" id="profile-summary"></div>
         </div>
 
         <div class="profile-lock" id="profile-lock" hidden>
@@ -201,12 +215,25 @@
           </article>
 
           <article>
-            <h2>Historial</h2>
+            <div class="section-head">
+              <h2>Favoritos</h2>
+              <button class="icon-button" id="favorite-add-button" type="button" aria-label="Agregar favorito" title="Agregar favorito" hidden>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div id="profile-favorites"></div>
+            <div class="section-head profile-subsection">
+              <h2>Lecturas</h2>
+            </div>
             <div class="timeline-item">
               <span class="dot"></span>
               <p><strong id="profile-last-favorite">Sin actividad</strong> Guarda un libro para verlo aqui.</p>
             </div>
             <div id="profile-reading"></div>
+            <div class="section-head profile-subsection">
+              <h2>Mis resenas</h2>
+            </div>
+            <div id="profile-reviews"></div>
           </article>
 
           <article>

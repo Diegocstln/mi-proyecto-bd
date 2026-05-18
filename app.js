@@ -2,9 +2,11 @@ const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
 
 const state = {
   books: [],
+  favorites: [],
   saved: new Set(),
   filter: 'all',
   minYear: 0,
+  category: '',
   token: localStorage.getItem('booksnexus_token') || '',
   user: null,
   library: { reading: [], reviews: [], lists: [] },
@@ -21,6 +23,7 @@ const savedBooks = document.querySelector('#saved-books');
 const rankingList = document.querySelector('#ranking-list');
 const yearFilter = document.querySelector('#year-filter');
 const yearValue = document.querySelector('#year-value');
+const categoryFilter = document.querySelector('#category-filter');
 const filterButtons = document.querySelectorAll('[data-filter]');
 const navButtons = document.querySelectorAll('[data-view-target]');
 const topbar = document.querySelector('.topbar');
@@ -29,13 +32,16 @@ const authLinks = document.querySelectorAll('[data-auth-link]');
 const profileName = document.querySelector('#profile-name');
 const profileUsername = document.querySelector('#profile-username');
 const profileEmail = document.querySelector('#profile-email');
+const profileSummary = document.querySelector('#profile-summary');
 const profileAvatar = document.querySelector('#profile-avatar');
 const profileStatus = document.querySelector('#profile-status');
 const profileFavoritesCount = document.querySelector('#profile-favorites-count');
 const profileStatsFavorites = document.querySelector('#profile-stats-favorites');
 const profileLastFavorite = document.querySelector('#profile-last-favorite');
 const profileLists = document.querySelector('#profile-lists');
+const profileFavorites = document.querySelector('#profile-favorites');
 const profileReading = document.querySelector('#profile-reading');
+const profileReviews = document.querySelector('#profile-reviews');
 const profileFollowers = document.querySelector('#profile-followers');
 const profileFollowing = document.querySelector('#profile-following');
 const profileView = document.querySelector('#view-perfil');
@@ -43,6 +49,7 @@ const profileLock = document.querySelector('#profile-lock');
 const profileEditButton = document.querySelector('#profile-edit-button');
 const profileDeleteButton = document.querySelector('#profile-delete-button');
 const listCreateButton = document.querySelector('#list-create-button');
+const favoriteAddButton = document.querySelector('#favorite-add-button');
 const communityReviewCount = document.querySelector('#community-review-count');
 const communityReaderCount = document.querySelector('#community-reader-count');
 const communityReviews = document.querySelector('#community-reviews');
@@ -123,6 +130,8 @@ function translateError(message) {
     'Avatar URL must be a valid URL': 'La URL del avatar debe ser valida.',
     'List description must be 500 characters or less': 'La descripcion de la lista debe tener 500 caracteres o menos.',
     'List not found': 'No encontramos esa lista.',
+    'Book not found in list': 'Ese libro ya no esta en la lista.',
+    'Review not found': 'No encontramos esa resena.',
   };
 
   return translations[message] || message || 'No se pudo completar la accion.';
@@ -306,7 +315,13 @@ function renderRanking() {
 }
 
 async function searchBooks(query) {
-  const response = await fetch(`${apiBaseUrl}/api/books/search?q=${encodeURIComponent(query)}`);
+  const params = new URLSearchParams({ q: query });
+
+  if (state.category) {
+    params.set('subject', state.category);
+  }
+
+  const response = await fetch(`${apiBaseUrl}/api/books/search?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error('No se pudo consultar el backend');
@@ -542,6 +557,40 @@ async function saveReview(book, comentario, calificacion) {
   return response.json();
 }
 
+async function updateReview(idResena, payload) {
+  const response = await fetch(`${apiBaseUrl}/api/library/reviews/${idResena}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo actualizar la resena');
+  }
+
+  return response.json();
+}
+
+async function deleteReview(idResena) {
+  const response = await fetch(`${apiBaseUrl}/api/library/reviews/${idResena}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo eliminar la resena');
+  }
+
+  return response.json();
+}
+
 async function createList(nombreLista) {
   return saveList({ nombreLista, privacidad: 'publica' });
 }
@@ -624,7 +673,25 @@ async function addBookToList(idLista, book) {
   return response.json();
 }
 
+async function removeBookFromList(idLista, workKey) {
+  const cleanKey = String(workKey || '').replace('/works/', '');
+  const response = await fetch(`${apiBaseUrl}/api/library/lists/${idLista}/books/${encodeURIComponent(cleanKey)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo quitar el libro de la lista');
+  }
+
+  return response.json();
+}
+
 function syncSavedFromFavorites(favorites) {
+  state.favorites = favorites || [];
   state.saved = new Set((favorites || []).map((book) => String(book.openLibraryKey)));
   const lastFavorite = favorites?.[0];
 
@@ -662,29 +729,96 @@ function renderReaderMeta(user) {
   return `${formatCount(user.public_lists, 'lista publica', 'listas publicas')} &middot; ${formatCount(user.followers, 'seguidor', 'seguidores')}`;
 }
 
+function renderListBooks(list) {
+  const books = list.books || [];
+
+  if (!books.length) {
+    return '<p class="status compact-status">Sin libros en esta lista.</p>';
+  }
+
+  return `
+    <div class="list-books">
+      ${books.map((book) => `
+        <div class="list-book">
+          <span>${escapeHtml(book.title || book.titulo || 'Libro sin titulo')}</span>
+          <button class="icon-button" type="button" data-list-book-remove="${list.id_lista}" data-work-key="${escapeHtml(book.openLibraryKey || book.openlibrary_key || '')}" aria-label="Quitar ${escapeHtml(book.title || book.titulo || 'libro')} de ${escapeHtml(list.nombre_lista)}" title="Quitar de la lista">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderListPreview(list) {
+  const books = (list.books || []).slice(0, 3);
+
+  if (!books.length) {
+    return '<div class="list-preview empty">Sin libros todavia</div>';
+  }
+
+  return `
+    <div class="list-preview">
+      ${books.map((book) => `
+        <span title="${escapeHtml(book.title || book.titulo || 'Libro')}">${escapeHtml(getInitials(book.title || book.titulo || 'Libro'))}</span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderFavorites() {
+  profileFavorites.innerHTML = state.favorites.length
+    ? state.favorites
+        .map((book) => `
+          <div class="favorite-card">
+            ${renderCover({
+              title: book.title,
+              coverUrl: book.coverUrl,
+            })}
+            <div>
+              <strong>${escapeHtml(book.title)}</strong>
+              <span>${escapeHtml(formatAuthors(book.authors))}</span>
+            </div>
+            <button class="icon-button" type="button" data-profile-favorite-remove="${escapeHtml(book.openLibraryKey)}" aria-label="Quitar ${escapeHtml(book.title)} de favoritos" title="Quitar favorito">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+        `)
+        .join('')
+    : '<p class="status">Aun no tienes favoritos guardados.</p>';
+}
+
+function renderProfileSummary() {
+  const lists = state.library.lists || [];
+  const reading = state.library.reading || [];
+  const reviews = state.library.reviews || [];
+
+  profileSummary.innerHTML = `
+    <span><strong>${state.favorites.length}</strong> favoritos</span>
+    <span><strong>${lists.length}</strong> listas</span>
+    <span><strong>${reviews.length}</strong> resenas</span>
+    <span><strong>${reading.length}</strong> lecturas</span>
+  `;
+}
+
 function renderLibrary() {
   const lists = state.library.lists || [];
   const reading = state.library.reading || [];
+  const reviews = state.library.reviews || [];
   const followers = state.library.followers || [];
   const following = state.library.following || [];
 
   profileLists.innerHTML = lists.length
     ? lists
         .map((list) => `
-          <div class="list-card" data-list-id="${list.id_lista}">
+          <button class="list-card list-mini" type="button" data-list-open="${list.id_lista}">
             <div>
               <span>${escapeHtml(list.nombre_lista)}</span>
               <strong>${list.total_libros} ${list.total_libros === 1 ? 'libro' : 'libros'} - ${escapeHtml(list.privacidad)}</strong>
+              ${list.descripcion ? `<p>${escapeHtml(list.descripcion)}</p>` : ''}
             </div>
-            <div class="list-actions">
-              <button class="icon-button" type="button" data-list-edit="${list.id_lista}" aria-label="Editar ${escapeHtml(list.nombre_lista)}" title="Editar lista">
-                <i class="fa-solid fa-pen" aria-hidden="true"></i>
-              </button>
-              <button class="icon-button" type="button" data-list-delete="${list.id_lista}" aria-label="Eliminar ${escapeHtml(list.nombre_lista)}" title="Eliminar lista">
-                <i class="fa-solid fa-trash" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
+            ${renderListPreview(list)}
+          </button>
         `)
         .join('')
     : '<div class="list-card"><span>Sin listas todavia</span><strong>0 libros</strong></div>';
@@ -700,8 +834,31 @@ function renderLibrary() {
         `)
         .join('')
     : '';
+  profileReviews.innerHTML = reviews.length
+    ? reviews
+        .map((review) => `
+          <div class="review-card" data-review-id="${review.id_resena}">
+            <div>
+              <strong>${escapeHtml(review.titulo)}</strong>
+              <span>${escapeHtml(review.calificacion)}/5 estrellas</span>
+              <p>${escapeHtml(review.comentario)}</p>
+            </div>
+            <div class="list-actions">
+              <button class="icon-button" type="button" data-review-edit="${review.id_resena}" aria-label="Editar resena de ${escapeHtml(review.titulo)}" title="Editar resena">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              </button>
+              <button class="icon-button" type="button" data-review-delete="${review.id_resena}" aria-label="Eliminar resena de ${escapeHtml(review.titulo)}" title="Eliminar resena">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        `)
+        .join('')
+    : '<p class="status">Aun no has escrito resenas.</p>';
   profileFollowers.innerHTML = renderPeopleList(followers, 'Todavia nadie te sigue.');
   profileFollowing.innerHTML = renderPeopleList(following, 'Todavia no sigues a ningun lector.');
+  renderFavorites();
+  renderProfileSummary();
 }
 
 function renderCommunity() {
@@ -715,9 +872,23 @@ function renderCommunity() {
   communityReviews.innerHTML = reviews.length
     ? reviews
         .map((review) => `
-          <div class="review">
-            <strong>${escapeHtml(review.nombre || review.username)}</strong>
-            <span>califico "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
+          <div class="review" data-community-review="${review.id_resena || ''}">
+            <div class="review-head">
+              <div>
+                <strong>${escapeHtml(review.nombre || review.username)}</strong>
+                <span>califico "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
+              </div>
+              ${state.user && Number(review.id_usuario) === Number(state.user.id_usuario) ? `
+                <div class="kebab-actions">
+                  <button class="icon-button" type="button" data-community-review-edit="${review.id_resena}" aria-label="Editar resena" title="Editar resena">
+                    <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                  </button>
+                  <button class="icon-button danger-button" type="button" data-community-review-delete="${review.id_resena}" aria-label="Eliminar resena" title="Eliminar resena">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+              ` : ''}
+            </div>
             <p>${escapeHtml(review.comentario)}</p>
           </div>
         `)
@@ -739,7 +910,7 @@ function renderCommunity() {
           </li>
         `)
         .join('')
-    : rankingList.innerHTML;
+    : '<li><strong>Sin actividad esta semana</strong><br><span>El ranking se llena con favoritos y resenas de los ultimos 7 dias.</span></li>';
 
   readerList.innerHTML = activeUsers.length
     ? activeUsers
@@ -908,12 +1079,6 @@ function renderReaderProfileCard(profile) {
           `).join('') : '<p class="status">Todavia no ha publicado resenas.</p>'}
         </div>
       </section>
-
-      <section class="reader-section">
-        <h3>Red lectora</h3>
-        <div>${renderPeopleList(followers, 'Todavia no tiene seguidores.')}</div>
-        <div>${renderPeopleList(following, 'Todavia no sigue a otros lectores.')}</div>
-      </section>
     </div>
   `;
 }
@@ -951,8 +1116,10 @@ function renderAuthState() {
     profileEditButton.hidden = true;
     profileDeleteButton.hidden = true;
     listCreateButton.hidden = true;
+    favoriteAddButton.hidden = true;
     profileView.classList.add('locked');
     profileLock.hidden = false;
+    profileSummary.innerHTML = '';
     setProfileStatus('Tu biblioteca se desbloquea cuando inicias sesion.');
     return;
   }
@@ -965,6 +1132,7 @@ function renderAuthState() {
   profileEditButton.hidden = false;
   profileDeleteButton.hidden = false;
   listCreateButton.hidden = false;
+  favoriteAddButton.hidden = false;
   profileView.classList.remove('locked');
   profileLock.hidden = true;
   setProfileStatus(state.user.biografia || 'Sesion activa. Tu biblioteca esta sincronizada.');
@@ -1009,6 +1177,10 @@ function setActiveView(viewName) {
 
   topbar.classList.remove('menu-open');
   menuToggle.setAttribute('aria-expanded', 'false');
+
+  if (viewName === 'comunidad') {
+    renderCommunity();
+  }
 }
 
 function bindNavigation() {
@@ -1044,6 +1216,7 @@ function initializeViewFromHash() {
 function clearSession() {
   state.user = null;
   state.token = '';
+  state.favorites = [];
   state.saved = new Set();
   state.library = { reading: [], reviews: [], lists: [] };
   localStorage.removeItem('booksnexus_token');
@@ -1113,6 +1286,11 @@ yearFilter.addEventListener('input', (event) => {
   state.minYear = Number(event.target.value);
   yearValue.textContent = state.minYear ? `Desde ${state.minYear}` : 'Cualquier ano';
   renderBooks();
+});
+
+categoryFilter.addEventListener('change', () => {
+  state.category = categoryFilter.value;
+  performSearch();
 });
 
 communityReaderSearch?.addEventListener('input', () => {
@@ -1468,57 +1646,264 @@ listCreateButton.addEventListener('click', async () => {
   }
 });
 
-profileLists.addEventListener('click', async (event) => {
-  const editButton = event.target.closest('[data-list-edit]');
-  const deleteButton = event.target.closest('[data-list-delete]');
-
-  if (!editButton && !deleteButton) {
+favoriteAddButton.addEventListener('click', async () => {
+  if (!state.user) {
     return;
   }
 
-  const idLista = Number(editButton?.dataset.listEdit || deleteButton?.dataset.listDelete);
+  const candidates = state.books.filter((book) => !state.saved.has(String(book.id)));
+
+  if (!candidates.length) {
+    setActiveView('explorar');
+    showNotice('Busca un libro en Explorar y podras guardarlo desde aqui o desde su tarjeta.', 'info', 'Elige un libro');
+    return;
+  }
+
+  const favoriteData = await openActionDialog({
+    title: 'Agregar favorito',
+    body: `
+      <p class="dialog-intro">Elige uno de los resultados actuales de Explorar.</p>
+      <label>
+        Libro
+        <select name="bookId" required>
+          ${candidates.map((book) => `<option value="${escapeHtml(book.id)}">${escapeHtml(book.title)}</option>`).join('')}
+        </select>
+      </label>
+    `,
+    primaryLabel: 'Guardar favorito',
+  });
+
+  if (!favoriteData) {
+    return;
+  }
+
+  const book = candidates.find((item) => item.id === favoriteData.bookId);
+
+  if (!book) {
+    return;
+  }
+
+  favoriteAddButton.disabled = true;
+
+  try {
+    const result = await saveFavorite(book);
+    syncSavedFromFavorites(result.data || []);
+    renderBooks();
+    renderLibrary();
+    showNotice(`"${book.title}" quedo en tus favoritos.`, 'success', 'Favorito guardado');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error', 'No se pudo guardar');
+  } finally {
+    favoriteAddButton.disabled = false;
+  }
+});
+
+profileFavorites.addEventListener('click', async (event) => {
+  const removeButton = event.target.closest('[data-profile-favorite-remove]');
+
+  if (!removeButton) {
+    return;
+  }
+
+  const favorite = state.favorites.find((book) => String(book.openLibraryKey) === String(removeButton.dataset.profileFavoriteRemove));
+
+  if (!favorite) {
+    return;
+  }
+
+  removeButton.disabled = true;
+
+  try {
+    const result = await removeFavorite({
+      workKey: favorite.openLibraryKey.replace('/works/', ''),
+    });
+    syncSavedFromFavorites(result.data || []);
+    renderBooks();
+    renderLibrary();
+    showNotice(`"${favorite.title}" salio de tus favoritos.`, 'success', 'Favoritos actualizados');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error', 'No se pudo quitar');
+  } finally {
+    removeButton.disabled = false;
+  }
+});
+
+async function openListManager(list) {
+  const favoriteChoices = state.favorites.filter((favorite) => {
+    const favoriteKey = String(favorite.openLibraryKey);
+    return !(list.books || []).some((book) => String(book.openLibraryKey || book.openlibrary_key) === favoriteKey);
+  });
+  const books = list.books || [];
+  const listData = await openActionDialog({
+    title: `Lista: ${list.nombre_lista}`,
+    body: `
+      <section class="manager-section">
+        <strong>Datos de la lista</strong>
+        <div class="manager-grid">
+          <label>
+            Nombre
+            <input name="nombreLista" type="text" value="${escapeHtml(list.nombre_lista || '')}" required />
+          </label>
+          <label>
+            Privacidad
+            <select name="privacidad">
+              <option value="publica" ${list.privacidad === 'publica' ? 'selected' : ''}>Publica</option>
+              <option value="privada" ${list.privacidad === 'privada' ? 'selected' : ''}>Privada</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Descripcion
+          <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional">${escapeHtml(list.descripcion || '')}</textarea>
+        </label>
+      </section>
+
+      <section class="manager-section">
+        <strong>Libros guardados</strong>
+        ${books.length ? books.map((book) => {
+          const title = book.title || book.titulo || 'Libro sin titulo';
+          const workKey = book.openLibraryKey || book.openlibrary_key || '';
+
+          return `
+            <label class="remove-option">
+              <input type="checkbox" name="removeWorkKey" value="${escapeHtml(workKey)}" />
+              <span class="remove-book-mark">${escapeHtml(getInitials(title))}</span>
+              <span class="remove-book-copy">
+                <strong>${escapeHtml(title)}</strong>
+                <span>Se queda en la lista</span>
+              </span>
+              <span class="remove-book-action">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                <span>Quitar</span>
+              </span>
+            </label>
+          `;
+        }).join('') : '<p class="status compact-status">Sin libros todavia.</p>'}
+      </section>
+
+      <div class="manager-section">
+        <strong>Agregar libro</strong>
+        <p class="dialog-intro">Puedes agregar cualquiera de tus favoritos que todavia no este en esta lista.</p>
+        <label>
+          Desde favoritos
+          <select name="addFavoriteKey">
+            <option value="">No agregar ahora</option>
+            ${favoriteChoices.map((book) => `<option value="${escapeHtml(book.openLibraryKey)}">${escapeHtml(book.title)}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+    `,
+    primaryLabel: 'Guardar lista',
+  });
+
+  if (!listData) {
+    return;
+  }
+
+  try {
+    let result = await updateList(list.id_lista, listData);
+    state.library = result.data || state.library;
+
+    const removals = Array.isArray(listData.removeWorkKey)
+      ? listData.removeWorkKey
+      : listData.removeWorkKey
+        ? [listData.removeWorkKey]
+        : [];
+
+    for (const workKey of removals) {
+      result = await removeBookFromList(list.id_lista, workKey);
+      state.library = result.data || state.library;
+    }
+
+    if (listData.addFavoriteKey) {
+      const favorite = state.favorites.find((book) => String(book.openLibraryKey) === String(listData.addFavoriteKey));
+
+      if (favorite) {
+        result = await addBookToList(list.id_lista, {
+          id: favorite.openLibraryKey,
+          title: favorite.title,
+          authors: favorite.authors,
+          firstPublishYear: favorite.firstPublishYear,
+          coverUrl: favorite.coverUrl,
+        });
+        state.library = result.data || state.library;
+      }
+    }
+
+    renderLibrary();
+    showNotice('Lista actualizada.', 'success', 'Cambios guardados');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error', 'No se pudo guardar');
+  }
+}
+
+profileLists.addEventListener('click', async (event) => {
+  const openButton = event.target.closest('[data-list-open]');
+
+  if (!openButton) {
+    return;
+  }
+
+  const idLista = Number(openButton.dataset.listOpen);
   const list = (state.library.lists || []).find((item) => Number(item.id_lista) === idLista);
 
   if (!list) {
     return;
   }
 
+  await openListManager(list);
+});
+
+profileReviews.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-review-edit]');
+  const deleteButton = event.target.closest('[data-review-delete]');
+
+  if (!editButton && !deleteButton) {
+    return;
+  }
+
+  const idResena = Number(editButton?.dataset.reviewEdit || deleteButton?.dataset.reviewDelete);
+  const review = (state.library.reviews || []).find((item) => Number(item.id_resena) === idResena);
+
+  if (!review) {
+    return;
+  }
+
   if (editButton) {
-    const listData = await openActionDialog({
-      title: 'Editar lista',
+    const reviewData = await openActionDialog({
+      title: `Editar resena de "${review.titulo}"`,
       body: `
         <label>
-          Nombre
-          <input name="nombreLista" type="text" value="${escapeHtml(list.nombre_lista || '')}" required />
+          Tu resena
+          <textarea name="comentario" rows="4" required>${escapeHtml(review.comentario || '')}</textarea>
         </label>
         <label>
-          Descripcion
-          <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional">${escapeHtml(list.descripcion || '')}</textarea>
-        </label>
-        <label>
-          Privacidad
-          <select name="privacidad">
-            <option value="publica" ${list.privacidad === 'publica' ? 'selected' : ''}>Publica</option>
-            <option value="privada" ${list.privacidad === 'privada' ? 'selected' : ''}>Privada</option>
+          Calificacion
+          <select name="calificacion" required>
+            ${[5, 4, 3, 2, 1].map((value) => `<option value="${value}" ${Number(review.calificacion) === value ? 'selected' : ''}>${value} estrellas</option>`).join('')}
           </select>
         </label>
       `,
-      primaryLabel: 'Guardar lista',
+      primaryLabel: 'Guardar resena',
     });
 
-    if (!listData) {
+    if (!reviewData) {
       return;
     }
 
     editButton.disabled = true;
 
     try {
-      const result = await updateList(idLista, listData);
+      const result = await updateReview(idResena, {
+        comentario: reviewData.comentario,
+        calificacion: Number(reviewData.calificacion),
+      });
       state.library = result.data || state.library;
       renderLibrary();
-      showNotice('Lista actualizada.');
+      await refreshCommunity();
+      showNotice('Tu resena se actualizo.', 'success', 'Resena guardada');
     } catch (error) {
-      showNotice(translateError(error.message), 'error');
+      showNotice(translateError(error.message), 'error', 'No se pudo guardar');
     } finally {
       editButton.disabled = false;
     }
@@ -1527,9 +1912,9 @@ profileLists.addEventListener('click', async (event) => {
   }
 
   const confirmation = await openActionDialog({
-    title: 'Eliminar lista',
-    body: `<p class="status error">Se eliminara "${escapeHtml(list.nombre_lista)}" y sus libros guardados en esa lista.</p>`,
-    primaryLabel: 'Eliminar lista',
+    title: 'Eliminar resena',
+    body: `<p class="status error">Se eliminara tu resena de "${escapeHtml(review.titulo)}".</p>`,
+    primaryLabel: 'Eliminar resena',
   });
 
   if (!confirmation) {
@@ -1539,21 +1924,106 @@ profileLists.addEventListener('click', async (event) => {
   deleteButton.disabled = true;
 
   try {
-    const result = await deleteList(idLista);
+    const result = await deleteReview(idResena);
     state.library = result.data || state.library;
     renderLibrary();
-    showNotice('Lista eliminada.');
+    await refreshCommunity();
+    showNotice('La resena fue eliminada.', 'success', 'Resena eliminada');
   } catch (error) {
-    showNotice(translateError(error.message), 'error');
+    showNotice(translateError(error.message), 'error', 'No se pudo eliminar');
   } finally {
     deleteButton.disabled = false;
+  }
+});
+
+communityReviews.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-community-review-edit]');
+  const deleteButton = event.target.closest('[data-community-review-delete]');
+
+  if (!editButton && !deleteButton) {
+    return;
+  }
+
+  const idResena = Number(editButton?.dataset.communityReviewEdit || deleteButton?.dataset.communityReviewDelete);
+  const review = (state.library.reviews || []).find((item) => Number(item.id_resena) === idResena);
+
+  if (!review) {
+    showNotice('Abre tu perfil para sincronizar tus resenas antes de editarlas.', 'error', 'Resena no disponible');
+    return;
+  }
+
+  if (editButton) {
+    const reviewData = await openActionDialog({
+      title: `Editar resena de "${review.titulo}"`,
+      body: `
+        <label>
+          Tu resena
+          <textarea name="comentario" rows="4" required>${escapeHtml(review.comentario || '')}</textarea>
+        </label>
+        <label>
+          Calificacion
+          <select name="calificacion" required>
+            ${[5, 4, 3, 2, 1].map((value) => `<option value="${value}" ${Number(review.calificacion) === value ? 'selected' : ''}>${value} estrellas</option>`).join('')}
+          </select>
+        </label>
+      `,
+      primaryLabel: 'Guardar resena',
+    });
+
+    if (!reviewData) {
+      return;
+    }
+
+    try {
+      const result = await updateReview(idResena, {
+        comentario: reviewData.comentario,
+        calificacion: Number(reviewData.calificacion),
+      });
+      state.library = result.data || state.library;
+      renderLibrary();
+      await refreshCommunity();
+      showNotice('Tu resena se actualizo tambien en comunidad.', 'success', 'Resena guardada');
+    } catch (error) {
+      showNotice(translateError(error.message), 'error', 'No se pudo guardar');
+    }
+
+    return;
+  }
+
+  const confirmation = await openActionDialog({
+    title: 'Eliminar resena',
+    body: `<p class="status error">Se eliminara tu resena de "${escapeHtml(review.titulo)}" tambien de comunidad.</p>`,
+    primaryLabel: 'Eliminar resena',
+  });
+
+  if (!confirmation) {
+    return;
+  }
+
+  try {
+    const result = await deleteReview(idResena);
+    state.library = result.data || state.library;
+    renderLibrary();
+    await refreshCommunity();
+    showNotice('La resena fue eliminada de comunidad.', 'success', 'Resena eliminada');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error', 'No se pudo eliminar');
   }
 });
 
 actionForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(actionForm);
-  const values = Object.fromEntries(formData.entries());
+  const values = {};
+
+  formData.forEach((value, key) => {
+    if (key in values) {
+      values[key] = Array.isArray(values[key]) ? [...values[key], value] : [values[key], value];
+      return;
+    }
+
+    values[key] = value;
+  });
   closeActionDialog(values);
 });
 

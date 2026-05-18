@@ -35,12 +35,20 @@ function escapeHtml(value) {
   });
 }
 
-function showNotice(message, type = 'info') {
+function showNotice(message, type = 'info', title = '') {
+  const defaults = {
+    info: 'Listo',
+    success: 'Listo',
+    error: 'Algo no salio bien',
+  };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `
     <i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}" aria-hidden="true"></i>
-    <span>${escapeHtml(message)}</span>
+    <div>
+      <strong>${escapeHtml(title || defaults[type] || defaults.info)}</strong>
+      <span>${escapeHtml(message)}</span>
+    </div>
   `;
   toastStack.appendChild(toast);
 
@@ -132,12 +140,12 @@ form.addEventListener('submit', async (event) => {
     localStorage.setItem('booksnexus_token', result.token);
     localStorage.setItem('booksnexus_user', JSON.stringify(result.user));
     setStatus('Sesion lista. Abriendo tu perfil...');
-    showNotice('Sesion iniciada.');
+    showNotice('Te llevamos directo a tu perfil sincronizado.', 'success', 'Sesion iniciada');
     window.location.href = '../../index.html#view-perfil';
   } catch (error) {
     const message = translateError(error.message) || 'No se pudo conectar con BooksNexus.';
     setStatus(message, true);
-    showNotice(message, 'error');
+    showNotice(message, 'error', mode === 'register' ? 'No se pudo crear la cuenta' : 'No se pudo entrar');
   } finally {
     submitButton.disabled = false;
   }

@@ -86,23 +86,24 @@
               </div>
             </label>
             <label>
-              Ano minimo
-              <input id="year-filter" type="range" min="0" max="2026" step="1" value="0" />
+              Autor
+              <select id="author-filter">
+                <option value="">Todos los autores</option>
+              </select>
             </label>
-            <output id="year-value">Cualquier ano</output>
             <label>
               Categoria
-              <select id="category-filter">
-                <option value="">Todas</option>
-                <option value="fiction">Ficcion</option>
-                <option value="fantasy">Fantasia</option>
-                <option value="romance">Romance</option>
-                <option value="mystery">Misterio</option>
-                <option value="science_fiction">Ciencia ficcion</option>
-                <option value="history">Historia</option>
-                <option value="young_adult">Young adult</option>
-                <option value="biography">Biografia</option>
-              </select>
+              <div class="category-tags" id="category-filter" aria-label="Filtrar por categoria">
+                <button class="category-chip active" type="button" data-category="" data-category-name="Todas las categorias" title="Todas las categorias">Todas</button>
+                <button class="category-chip fiction" type="button" data-category="fiction" data-category-name="Ficcion" title="Ficcion">Ficcion</button>
+                <button class="category-chip fantasy" type="button" data-category="fantasy" data-category-name="Fantasia" title="Fantasia">Fantasia</button>
+                <button class="category-chip romance" type="button" data-category="romance" data-category-name="Romance" title="Romance">Romance</button>
+                <button class="category-chip mystery" type="button" data-category="mystery" data-category-name="Misterio" title="Misterio">Misterio</button>
+                <button class="category-chip scifi" type="button" data-category="science_fiction" data-category-name="Ciencia ficcion" title="Ciencia ficcion">Sci-fi</button>
+                <button class="category-chip history" type="button" data-category="history" data-category-name="Historia" title="Historia">Historia</button>
+                <button class="category-chip young" type="button" data-category="young_adult" data-category-name="Young adult" title="Young adult">YA</button>
+                <button class="category-chip bio" type="button" data-category="biography" data-category-name="Biografia" title="Biografia">Bio</button>
+              </div>
             </label>
           </aside>
 
@@ -164,6 +165,16 @@
             <p class="eyebrow">Perfil de lector</p>
             <h1 id="profile-name">Mi perfil</h1>
             <p id="profile-username">Inicia sesion para ver tus datos reales.</p>
+            <div class="profile-social-counts" id="profile-social-counts" hidden>
+              <button type="button" data-profile-connection="followers">
+                <strong id="profile-followers-count">0</strong>
+                <span>seguidores</span>
+              </button>
+              <button type="button" data-profile-connection="following">
+                <strong id="profile-following-count">0</strong>
+                <span>seguidos</span>
+              </button>
+            </div>
           </div>
           <div class="profile-actions">
             <button class="ghost-button" id="profile-edit-button" type="button" hidden>
@@ -246,10 +257,6 @@
               <span>Estado</span>
               <strong>Activo</strong>
             </div>
-            <h2>Seguidores</h2>
-            <div id="profile-followers"></div>
-            <h2>Siguiendo</h2>
-            <div id="profile-following"></div>
           </article>
         </div>
       </section>

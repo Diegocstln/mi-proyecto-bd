@@ -5,7 +5,8 @@ const state = {
   favorites: [],
   saved: new Set(),
   filter: 'all',
-  minYear: 0,
+  authorFilter: '',
+  authors: [],
   category: '',
   token: localStorage.getItem('booksnexus_token') || '',
   user: null,
@@ -21,9 +22,8 @@ const resultCount = document.querySelector('#result-count');
 const totalBooks = document.querySelector('#total-books');
 const savedBooks = document.querySelector('#saved-books');
 const rankingList = document.querySelector('#ranking-list');
-const yearFilter = document.querySelector('#year-filter');
-const yearValue = document.querySelector('#year-value');
-const categoryFilter = document.querySelector('#category-filter');
+const authorFilter = document.querySelector('#author-filter');
+const categoryButtons = document.querySelectorAll('[data-category]');
 const filterButtons = document.querySelectorAll('[data-filter]');
 const navButtons = document.querySelectorAll('[data-view-target]');
 const topbar = document.querySelector('.topbar');
@@ -34,6 +34,9 @@ const profileUsername = document.querySelector('#profile-username');
 const profileEmail = document.querySelector('#profile-email');
 const profileSummary = document.querySelector('#profile-summary');
 const profileAvatar = document.querySelector('#profile-avatar');
+const profileSocialCounts = document.querySelector('#profile-social-counts');
+const profileFollowersCount = document.querySelector('#profile-followers-count');
+const profileFollowingCount = document.querySelector('#profile-following-count');
 const profileStatus = document.querySelector('#profile-status');
 const profileFavoritesCount = document.querySelector('#profile-favorites-count');
 const profileStatsFavorites = document.querySelector('#profile-stats-favorites');
@@ -42,8 +45,6 @@ const profileLists = document.querySelector('#profile-lists');
 const profileFavorites = document.querySelector('#profile-favorites');
 const profileReading = document.querySelector('#profile-reading');
 const profileReviews = document.querySelector('#profile-reviews');
-const profileFollowers = document.querySelector('#profile-followers');
-const profileFollowing = document.querySelector('#profile-following');
 const profileView = document.querySelector('#view-perfil');
 const profileLock = document.querySelector('#profile-lock');
 const profileEditButton = document.querySelector('#profile-edit-button');
@@ -166,6 +167,81 @@ function formatAuthors(authors) {
   return authors.slice(0, 3).join(', ');
 }
 
+function normalizeText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isFollowingValue(value) {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
+function getFollowingIds() {
+  return new Set((state.library.following || []).map((person) => String(person.id_usuario)));
+}
+
+function toArray(value) {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
+
+function getBookCategories(book) {
+  const rawCategories = [
+    ...toArray(book.categories),
+    ...toArray(book.subjects),
+    ...(book.subject ? [book.subject] : []),
+    ...(book.categoria ? [book.categoria] : []),
+  ];
+  const categories = rawCategories
+    .map((category) => String(category || '').trim())
+    .filter(Boolean);
+
+  if (book.firstPublishYear) {
+    categories.unshift(String(book.firstPublishYear));
+  }
+
+  return [...new Set(categories)].slice(0, 4);
+}
+
+function getCategoryClass(category) {
+  const value = normalizeText(category).replace(/\s+/g, '_');
+
+  if (value.includes('fantasy') || value.includes('fantasia')) return 'fantasy';
+  if (value.includes('romance')) return 'romance';
+  if (value.includes('mystery') || value.includes('misterio')) return 'mystery';
+  if (value.includes('science') || value.includes('ciencia')) return 'scifi';
+  if (value.includes('history') || value.includes('historia')) return 'history';
+  if (value.includes('young')) return 'young';
+  if (value.includes('bio')) return 'bio';
+  if (value.includes('fiction') || value.includes('ficcion')) return 'fiction';
+
+  return 'neutral';
+}
+
+function renderCategoryTags(categories) {
+  return categories
+    .map((category) => `
+      <span class="category-chip ${getCategoryClass(category)}" title="${escapeHtml(category)}">
+        ${escapeHtml(category)}
+      </span>
+    `)
+    .join('');
+}
+
+function getSpanishDescription(detail) {
+  return (
+    detail.descripcion ||
+    detail.description_es ||
+    detail.descriptionEs ||
+    detail.resumen ||
+    detail.sinopsis ||
+    detail.description ||
+    'El catalogo no tiene descripcion en espanol para este libro.'
+  );
+}
+
 function getInitials(title) {
   return title
     .split(' ')
@@ -190,6 +266,31 @@ function escapeHtml(value) {
   });
 }
 
+function getAvatarUrl(user) {
+  return user?.avatar_url || user?.avatarUrl || user?.avatar || '';
+}
+
+function renderAvatar(user, className = 'avatar') {
+  const name = escapeHtml(user?.nombre || user?.username || 'BooksNexus');
+  const avatarUrl = getAvatarUrl(user);
+
+  if (avatarUrl) {
+    return `<img class="${className} image-avatar" src="${escapeHtml(avatarUrl)}" alt="${name}" loading="lazy" />`;
+  }
+
+  return `<div class="${className}" aria-hidden="true">${escapeHtml(getInitialsFromUser(user))}</div>`;
+}
+
+function paintAvatar(element, user) {
+  if (!element) {
+    return;
+  }
+
+  const avatarUrl = getAvatarUrl(user);
+  element.innerHTML = avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(user?.nombre || user?.username || 'Perfil')}" />` : escapeHtml(getInitialsFromUser(user));
+  element.classList.toggle('has-image', Boolean(avatarUrl));
+}
+
 function normalizeBook(book, index) {
   const title = book.title || 'Titulo no disponible';
   const firstPublishYear = Number(book.firstPublishYear) || 0;
@@ -202,16 +303,38 @@ function normalizeBook(book, index) {
     authors: book.authors || [],
     firstPublishYear,
     coverUrl: book.coverUrl || '',
+    categories: toArray(book.categories || book.subjects || book.subject || book.categorias),
   };
 }
 
 function getFilteredBooks() {
+  const authorQuery = normalizeText(state.authorFilter);
+
   return state.books.filter((book) => {
     const matchesSaved = state.filter === 'all' || state.saved.has(String(book.id));
-    const matchesYear = !state.minYear || book.firstPublishYear >= state.minYear;
+    const matchesAuthor =
+      !authorQuery ||
+      (book.authors || []).some((author) => normalizeText(author) === authorQuery || normalizeText(author).includes(authorQuery));
 
-    return matchesSaved && matchesYear;
+    return matchesSaved && matchesAuthor;
   });
+}
+
+function updateAuthorOptions(extraAuthors = []) {
+  if (!authorFilter) {
+    return;
+  }
+
+  const selected = state.authorFilter;
+  const authors = [...new Set([selected, ...state.authors, ...extraAuthors, ...state.books.flatMap((book) => book.authors || [])].filter(Boolean))]
+    .sort((first, second) => first.localeCompare(second, 'es'));
+
+  authorFilter.innerHTML = `
+    <option value="">Todos los autores</option>
+    ${authors.map((author) => `<option value="${escapeHtml(author)}">${escapeHtml(author)}</option>`).join('')}
+  `;
+
+  authorFilter.value = selected;
 }
 
 function persistSavedBooks() {
@@ -256,8 +379,8 @@ function renderBooks() {
       const isSaved = state.saved.has(String(book.id));
       const author = escapeHtml(formatAuthors(book.authors));
       const title = escapeHtml(book.title);
-      const year = escapeHtml(book.firstPublishYear || 'Fecha no disponible');
       const bookId = escapeHtml(book.id);
+      const categories = getBookCategories(book);
 
       return `
         <article class="book-card">
@@ -265,8 +388,8 @@ function renderBooks() {
           <div class="book-content">
             <span class="book-meta">${author}</span>
             <h3>${title}</h3>
-            <div class="tag-row">
-              <span class="tag">${year}</span>
+            <div class="tag-row book-category-row">
+              ${renderCategoryTags(categories.length ? categories : ['Catalogo'])}
               <span class="tag">${isSaved ? 'Guardado' : 'Catalogo'}</span>
             </div>
             <p>Resultado conectado al catalogo externo de BooksNexus.</p>
@@ -317,9 +440,19 @@ function renderRanking() {
 async function searchBooks(query) {
   const params = new URLSearchParams({ q: query });
 
+  if (state.authorFilter) {
+    params.set('author', state.authorFilter);
+    params.set('autor', state.authorFilter);
+  }
+
   if (state.category) {
     params.set('subject', state.category);
+    params.set('category', state.category);
+    params.set('categoria', state.category);
   }
+
+  params.set('lang', 'es');
+  params.set('language', 'spa');
 
   const response = await fetch(`${apiBaseUrl}/api/books/search?${params.toString()}`);
 
@@ -330,8 +463,19 @@ async function searchBooks(query) {
   return response.json();
 }
 
+async function getAuthors() {
+  const response = await fetch(`${apiBaseUrl}/api/books/authors`);
+
+  if (!response.ok) {
+    throw new Error('No se pudieron cargar autores');
+  }
+
+  return response.json();
+}
+
 async function getBookDetail(workKey) {
-  const response = await fetch(`${apiBaseUrl}/api/books/${encodeURIComponent(workKey)}`);
+  const params = new URLSearchParams({ lang: 'es', language: 'spa' });
+  const response = await fetch(`${apiBaseUrl}/api/books/${encodeURIComponent(workKey)}?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error('No se pudo cargar el detalle');
@@ -457,6 +601,22 @@ async function followReader(idUsuario, isFollowing) {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'No se pudo actualizar el seguimiento');
+  }
+
+  return response.json();
+}
+
+async function removeFollower(idUsuario) {
+  const response = await fetch(`${apiBaseUrl}/api/library/users/${idUsuario}/follower`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo quitar el seguidor');
   }
 
   return response.json();
@@ -716,6 +876,78 @@ function renderPeopleList(people, emptyText) {
     : `<p class="status">${emptyText}</p>`;
 }
 
+function renderConnectionList(people, type) {
+  const emptyText = type === 'followers' ? 'Todavia nadie te sigue.' : 'Todavia no sigues a ningun lector.';
+  const followingIds = getFollowingIds();
+
+  if (!people?.length) {
+    return `<p class="status">${emptyText}</p>`;
+  }
+
+  return people
+    .map((person) => {
+      const isFollowing = isFollowingValue(person.is_following) || followingIds.has(String(person.id_usuario)) || type === 'following';
+      const canAct = state.user && Number(state.user.id_usuario) !== Number(person.id_usuario);
+
+      return `
+        <div class="connection-card">
+          ${renderAvatar(person, 'connection-avatar')}
+          <div>
+            <strong>${escapeHtml(person.nombre || person.username)}</strong>
+            <span>@${escapeHtml(person.username)}</span>
+          </div>
+          ${canAct ? `
+            <div class="connection-actions">
+              <button class="ghost-button ${isFollowing ? 'saved' : ''}" type="button" data-follow-reader="${person.id_usuario}" data-following="${isFollowing}">
+                <i class="fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}" aria-hidden="true"></i>
+                <span>${isFollowing ? 'Dejar de seguir' : 'Seguir'}</span>
+              </button>
+              ${type === 'followers' ? `
+                <button class="ghost-button danger-button" type="button" data-remove-follower="${person.id_usuario}">
+                  <i class="fa-solid fa-user-minus" aria-hidden="true"></i>
+                  <span>Quitar</span>
+                </button>
+              ` : ''}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function updateProfileSocialCounts() {
+  const followers = state.library.followers || [];
+  const following = state.library.following || [];
+  const followerCount = followers.length || Number(state.user?.followers) || 0;
+  const followingCount = following.length || Number(state.user?.following) || 0;
+
+  profileFollowersCount.textContent = String(followerCount);
+  profileFollowingCount.textContent = String(followingCount);
+}
+
+async function openProfileConnections(type) {
+  if (!state.user) {
+    return;
+  }
+
+  readerTitle.textContent = type === 'followers' ? 'Seguidores' : 'Seguidos';
+  readerBody.innerHTML = '<p class="status">Cargando lectores...</p>';
+  readerDialog.showModal();
+
+  try {
+    await refreshLibrary();
+    const people = type === 'followers' ? state.library.followers || [] : state.library.following || [];
+    readerBody.innerHTML = `
+      <section class="reader-section" data-profile-connections="${type}">
+        ${renderConnectionList(people, type)}
+      </section>
+    `;
+  } catch (error) {
+    readerBody.innerHTML = '<p class="status error">No se pudieron cargar los lectores.</p>';
+  }
+}
+
 function formatCount(value, singular, plural) {
   const number = Number(value) || 0;
   return `${number} ${number === 1 ? singular : plural}`;
@@ -805,8 +1037,6 @@ function renderLibrary() {
   const lists = state.library.lists || [];
   const reading = state.library.reading || [];
   const reviews = state.library.reviews || [];
-  const followers = state.library.followers || [];
-  const following = state.library.following || [];
 
   profileLists.innerHTML = lists.length
     ? lists
@@ -855,10 +1085,9 @@ function renderLibrary() {
         `)
         .join('')
     : '<p class="status">Aun no has escrito resenas.</p>';
-  profileFollowers.innerHTML = renderPeopleList(followers, 'Todavia nadie te sigue.');
-  profileFollowing.innerHTML = renderPeopleList(following, 'Todavia no sigues a ningun lector.');
   renderFavorites();
   renderProfileSummary();
+  updateProfileSocialCounts();
 }
 
 function renderCommunity() {
@@ -874,9 +1103,12 @@ function renderCommunity() {
         .map((review) => `
           <div class="review" data-community-review="${review.id_resena || ''}">
             <div class="review-head">
-              <div>
+              <div class="review-author">
+                ${renderAvatar(review, 'reader-avatar mini-avatar')}
+                <div>
                 <strong>${escapeHtml(review.nombre || review.username)}</strong>
                 <span>califico "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
+                </div>
               </div>
               ${state.user && Number(review.id_usuario) === Number(state.user.id_usuario) ? `
                 <div class="kebab-actions">
@@ -932,8 +1164,13 @@ function renderReaders(users, emptyText = 'No encontramos lectores con esa busqu
     ? users
         .map((user) => `
           <li>
-            <strong>@${escapeHtml(user.username)}</strong><br>
-            <span>${escapeHtml(user.nombre)} &middot; ${renderReaderMeta(user)}</span><br>
+            <div class="reader-list-person">
+              ${renderAvatar(user, 'reader-avatar mini-avatar')}
+              <div>
+                <strong>@${escapeHtml(user.username)}</strong><br>
+                <span>${escapeHtml(user.nombre)} &middot; ${renderReaderMeta(user)}</span>
+              </div>
+            </div>
             <button class="ghost-button" type="button" data-reader="${user.id_usuario}">Ver perfil</button>
           </li>
         `)
@@ -963,6 +1200,19 @@ async function refreshCommunity() {
   }
 }
 
+async function refreshAuthors() {
+  try {
+    const result = await getAuthors();
+    const authors = result.data || result.authors || [];
+    state.authors = authors
+      .map((author) => author.nombre || author.name || author.autor || author)
+      .filter(Boolean);
+    updateAuthorOptions();
+  } catch (error) {
+    updateAuthorOptions();
+  }
+}
+
 async function performReaderSearch() {
   const query = communityReaderSearch?.value.trim() || '';
 
@@ -984,14 +1234,15 @@ function renderReaderProfile(profile) {
   const followers = data.followers || [];
   const following = data.following || [];
   const canFollow = state.user && state.user.id_usuario !== user.id_usuario;
+  const isFollowing = isFollowingValue(user.is_following) || getFollowingIds().has(String(user.id_usuario));
 
   readerTitle.textContent = `@${user.username}`;
   readerBody.innerHTML = `
     <p><strong>${escapeHtml(user.nombre)}</strong></p>
     <p>${user.followers} seguidores · ${user.following} siguiendo</p>
     ${canFollow ? `
-      <button class="ghost-button" type="button" data-follow-reader="${user.id_usuario}" data-following="${user.is_following}">
-        ${user.is_following ? 'Dejar de seguir' : 'Seguir'}
+      <button class="ghost-button" type="button" data-follow-reader="${user.id_usuario}" data-following="${isFollowing}">
+        ${isFollowing ? 'Dejar de seguir' : 'Seguir'}
       </button>
     ` : ''}
     <h3>Le siguen</h3>
@@ -1021,20 +1272,21 @@ function renderReaderProfileCard(profile) {
   const followers = data.followers || [];
   const following = data.following || [];
   const canFollow = state.user && state.user.id_usuario !== user.id_usuario;
+  const isFollowing = isFollowingValue(user.is_following) || getFollowingIds().has(String(user.id_usuario));
 
   readerTitle.textContent = `${user.nombre || user.username}`;
   readerBody.innerHTML = `
     <div class="reader-profile">
       <section class="reader-hero">
-        <div class="reader-avatar" aria-hidden="true">${escapeHtml(getInitialsFromUser(user))}</div>
+        ${renderAvatar(user, 'reader-avatar')}
         <div>
           <h3>${escapeHtml(user.nombre || user.username)}</h3>
           <p>@${escapeHtml(user.username)}${user.biografia ? ` &middot; ${escapeHtml(user.biografia)}` : ''}</p>
         </div>
         ${canFollow ? `
-          <button class="ghost-button ${user.is_following ? 'saved' : ''}" type="button" data-follow-reader="${user.id_usuario}" data-following="${user.is_following}">
-            <i class="fa-solid ${user.is_following ? 'fa-user-check' : 'fa-user-plus'}" aria-hidden="true"></i>
-            <span>${user.is_following ? 'Siguiendo' : 'Seguir'}</span>
+          <button class="ghost-button ${isFollowing ? 'saved' : ''}" type="button" data-follow-reader="${user.id_usuario}" data-following="${isFollowing}">
+            <i class="fa-solid ${isFollowing ? 'fa-user-check' : 'fa-user-plus'}" aria-hidden="true"></i>
+            <span>${isFollowing ? 'Dejar de seguir' : 'Seguir'}</span>
           </button>
         ` : ''}
       </section>
@@ -1111,7 +1363,8 @@ function renderAuthState() {
     profileName.textContent = 'Mi perfil';
     profileUsername.textContent = 'Inicia sesion para ver tus datos reales.';
     profileEmail.textContent = 'Sin sesion activa';
-    profileAvatar.textContent = 'BN';
+    paintAvatar(profileAvatar, null);
+    profileSocialCounts.hidden = true;
     logoutButton.hidden = true;
     profileEditButton.hidden = true;
     profileDeleteButton.hidden = true;
@@ -1127,7 +1380,9 @@ function renderAuthState() {
   profileName.textContent = state.user.nombre || state.user.username;
   profileUsername.textContent = `@${state.user.username}`;
   profileEmail.textContent = state.user.correo;
-  profileAvatar.textContent = getInitialsFromUser(state.user);
+  paintAvatar(profileAvatar, state.user);
+  profileSocialCounts.hidden = false;
+  updateProfileSocialCounts();
   logoutButton.hidden = false;
   profileEditButton.hidden = false;
   profileDeleteButton.hidden = false;
@@ -1251,6 +1506,7 @@ async function performSearch() {
   try {
     const result = await searchBooks(query);
     state.books = (result.data || []).map(normalizeBook);
+    updateAuthorOptions();
     renderBooks();
     setStatus('Busqueda lista.');
   } catch (error) {
@@ -1282,20 +1538,38 @@ filterButtons.forEach((button) => {
   });
 });
 
-yearFilter.addEventListener('input', (event) => {
-  state.minYear = Number(event.target.value);
-  yearValue.textContent = state.minYear ? `Desde ${state.minYear}` : 'Cualquier ano';
+authorFilter?.addEventListener('change', (event) => {
+  state.authorFilter = event.target.value;
+  if (input.value.trim().length >= 3) {
+    performSearch();
+    return;
+  }
+
   renderBooks();
 });
 
-categoryFilter.addEventListener('change', () => {
-  state.category = categoryFilter.value;
-  performSearch();
+categoryButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    categoryButtons.forEach((item) => item.classList.remove('active'));
+    button.classList.add('active');
+    state.category = button.dataset.category || '';
+    performSearch();
+  });
 });
 
 communityReaderSearch?.addEventListener('input', () => {
   window.clearTimeout(readerSearchTimer);
   readerSearchTimer = window.setTimeout(performReaderSearch, 350);
+});
+
+profileSocialCounts?.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-profile-connection]');
+
+  if (!button) {
+    return;
+  }
+
+  openProfileConnections(button.dataset.profileConnection);
 });
 
 grid.addEventListener('click', async (event) => {
@@ -1315,14 +1589,14 @@ grid.addEventListener('click', async (event) => {
     getBookDetail(book.workKey)
       .then((result) => {
         const detail = result.data || {};
-        const description = detail.description || 'El catalogo no tiene descripcion para este libro.';
-        const subjects = (detail.subjects || []).slice(0, 8);
+        const description = getSpanishDescription(detail);
+        const subjects = (detail.subjects || detail.categories || detail.categorias || []).slice(0, 8);
+        const dates = [detail.firstPublishDate || book.firstPublishYear || 'Fecha no disponible'];
 
         detailBody.innerHTML = `
           <p>${escapeHtml(description)}</p>
           <div class="tag-row">
-            <span class="tag">${escapeHtml(detail.firstPublishDate || book.firstPublishYear || 'Fecha no disponible')}</span>
-            ${subjects.map((subject) => `<span class="tag">${escapeHtml(subject)}</span>`).join('')}
+            ${renderCategoryTags([...dates, ...subjects])}
           </div>
         `;
       })
@@ -2060,8 +2334,9 @@ readerList.addEventListener('click', async (event) => {
 
 readerBody.addEventListener('click', async (event) => {
   const button = event.target.closest('[data-follow-reader]');
+  const removeButton = event.target.closest('[data-remove-follower]');
 
-  if (!button) {
+  if (!button && !removeButton) {
     return;
   }
 
@@ -2070,21 +2345,52 @@ readerBody.addEventListener('click', async (event) => {
     return;
   }
 
-  button.disabled = true;
+  const actionButton = button || removeButton;
+  actionButton.disabled = true;
 
   try {
+    if (removeButton) {
+      await removeFollower(removeButton.dataset.removeFollower);
+      const type = readerBody.querySelector('[data-profile-connections]')?.dataset.profileConnections || 'followers';
+      await refreshLibrary();
+      const people = type === 'followers' ? state.library.followers || [] : state.library.following || [];
+      readerBody.innerHTML = `
+        <section class="reader-section" data-profile-connections="${type}">
+          ${renderConnectionList(people, type)}
+        </section>
+      `;
+      await refreshCommunity();
+      showNotice('Ese seguidor ya no aparece en tu perfil.', 'success', 'Seguidor quitado');
+      return;
+    }
+
     const profile = await followReader(button.dataset.followReader, button.dataset.following === 'true');
-    renderReaderProfileCard(profile);
+    const type = readerBody.querySelector('[data-profile-connections]')?.dataset.profileConnections;
+
+    if (type) {
+      await refreshLibrary();
+      const people = type === 'followers' ? state.library.followers || [] : state.library.following || [];
+      readerBody.innerHTML = `
+        <section class="reader-section" data-profile-connections="${type}">
+          ${renderConnectionList(people, type)}
+        </section>
+      `;
+    } else {
+      await refreshLibrary();
+      renderReaderProfileCard(profile);
+    }
+
     await refreshCommunity();
     showNotice('Tu red de lectores se actualizo correctamente.', 'success', 'Seguimiento actualizado');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo actualizar');
   } finally {
-    button.disabled = false;
+    actionButton.disabled = false;
   }
 });
 
 bindNavigation();
 initializeViewFromHash();
+refreshAuthors();
 hydrateUser();
 refreshCommunity();

@@ -16,6 +16,41 @@ const correoInput = document.querySelector('#correo');
 const usuarioInput = document.querySelector('#usuario');
 const passwordInput = document.querySelector('#password');
 
+function stripUnsafeText(value, maxLength = 500) {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[<>]/g, '')
+    .slice(0, maxLength);
+}
+
+function sanitizeUsername(value) {
+  return stripUnsafeText(value, 40).toLowerCase().replace(/[^a-z0-9_]/g, '');
+}
+
+function applyFieldGuards() {
+  [nombreInput, usernameInput, correoInput, usuarioInput].forEach((field) => {
+    field.addEventListener('input', () => {
+      const maxLength = Number(field.getAttribute('maxlength')) || 120;
+      const original = field.value;
+      let nextValue = field === usernameInput
+        ? sanitizeUsername(original)
+        : stripUnsafeText(original, maxLength);
+
+      if (field.type === 'email' || field === usuarioInput) {
+        nextValue = nextValue.replace(/\s/g, '');
+      }
+
+      if (nextValue !== original) {
+        field.value = nextValue;
+      }
+    });
+
+    field.addEventListener('paste', () => {
+      window.setTimeout(() => field.dispatchEvent(new Event('input', { bubbles: true })), 0);
+    });
+  });
+}
+
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
   statusElement.classList.toggle('error', isError);
@@ -39,7 +74,7 @@ function showNotice(message, type = 'info', title = '') {
   const defaults = {
     info: 'Listo',
     success: 'Listo',
-    error: 'Algo no salio bien',
+    error: 'Algo no salió bien',
   };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -60,13 +95,16 @@ function showNotice(message, type = 'info', title = '') {
 
 function translateError(message) {
   const translations = {
-    'Username and password are required': 'Escribe tu usuario y contrasena.',
-    'Invalid username or password': 'Usuario o contrasena incorrectos.',
+    'Username and password are required': 'Escribe tu usuario y contraseña.',
+    'Invalid username or password': 'Usuario o contraseña incorrectos.',
     'Username or email already exists': 'Ese usuario o correo ya existe.',
     'Name must be at least 2 characters': 'El nombre debe tener al menos 2 caracteres.',
+    'Name must be 100 characters or less': 'El nombre debe tener 100 caracteres o menos.',
     'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres.',
-    'A valid email is required': 'Escribe un correo valido.',
-    'Password must be at least 8 characters': 'La contrasena debe tener al menos 8 caracteres.',
+    'A valid email is required': 'Escribe un correo válido.',
+    'Email must be 120 characters or less': 'El correo debe tener 120 caracteres o menos.',
+    'Password must be at least 8 characters': 'La contraseña debe tener al menos 8 caracteres.',
+    'Password must be 128 characters or less': 'La contraseña debe tener 128 caracteres o menos.',
   };
 
   return translations[message] || message || 'No se pudo completar el acceso.';
@@ -91,7 +129,7 @@ function setMode(nextMode) {
   passwordInput.autocomplete = mode === 'register' ? 'new-password' : 'current-password';
   submitLabel.textContent = mode === 'register' ? 'Crear cuenta' : 'Entrar';
   submitIcon.className = `fa-solid ${mode === 'register' ? 'fa-user-plus' : 'fa-right-to-bracket'}`;
-  setStatus(mode === 'register' ? 'Crea una cuenta nueva en BooksNexus.' : 'Listo para entrar con usuario o correo y contrasena.');
+  setStatus(mode === 'register' ? 'Crea una cuenta nueva en BooksNexus.' : 'Listo para entrar con usuario o correo y contraseña.');
 }
 
 async function submitAuth(payload) {
@@ -126,21 +164,23 @@ form.addEventListener('submit', async (event) => {
   };
 
   if (mode === 'register') {
-    payload.nombre = nombreInput.value.trim();
-    payload.username = usernameInput.value.trim();
-    payload.correo = correoInput.value.trim();
+    payload.nombre = stripUnsafeText(nombreInput.value.trim(), 100);
+    payload.username = sanitizeUsername(usernameInput.value.trim());
+    payload.correo = stripUnsafeText(correoInput.value.trim(), 120).replace(/\s/g, '');
     delete payload.usuario;
+  } else {
+    payload.usuario = stripUnsafeText(payload.usuario, 120).replace(/\s/g, '');
   }
 
   submitButton.disabled = true;
-  setStatus(mode === 'register' ? 'Creando cuenta...' : 'Validando sesion...');
+  setStatus(mode === 'register' ? 'Creando cuenta...' : 'Validando sesión...');
 
   try {
     const result = await submitAuth(payload);
     localStorage.setItem('booksnexus_token', result.token);
     localStorage.setItem('booksnexus_user', JSON.stringify(result.user));
-    setStatus('Sesion lista. Abriendo tu perfil...');
-    showNotice('Te llevamos directo a tu perfil sincronizado.', 'success', 'Sesion iniciada');
+    setStatus('Sesión lista. Abriendo tu perfil...');
+    showNotice('Te llevamos directo a tu perfil sincronizado.', 'success', 'Sesión iniciada');
     window.location.href = '../../index.html#view-perfil';
   } catch (error) {
     const message = translateError(error.message) || 'No se pudo conectar con BooksNexus.';
@@ -152,3 +192,4 @@ form.addEventListener('submit', async (event) => {
 });
 
 setMode('login');
+applyFieldGuards();

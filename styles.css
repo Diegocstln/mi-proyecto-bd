@@ -1,5 +1,7 @@
 :root {
   color-scheme: light;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   --ink: #14313f;
   --muted: #61727a;
   --paper: #f3f8f7;
@@ -14,11 +16,45 @@
   --coral-soft: #fff1e8;
   --green: #2e8468;
   --warn: #ad3f2a;
-  --shadow: 0 16px 36px rgba(20, 49, 63, 0.1);
+  --shadow: 0 14px 30px rgba(20, 49, 63, 0.09);
+  --shadow-hover: 0 18px 38px rgba(20, 49, 63, 0.14);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e8f4f2;
+  --muted: #a9b9bd;
+  --paper: #10191d;
+  --surface: #172428;
+  --surface-soft: #1f3237;
+  --line: #315057;
+  --blue: #73d4df;
+  --blue-soft: #17363b;
+  --aqua: #66d3c9;
+  --aqua-soft: #183b39;
+  --coral: #f2a06e;
+  --coral-soft: #3a251b;
+  --green: #73c7a8;
+  --warn: #ff9b82;
+  --shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  --shadow-hover: 0 22px 48px rgba(0, 0, 0, 0.42);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html.dialog-scroll-lock,
+body.dialog-scroll-lock {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body.dialog-scroll-lock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
 }
 
 html,
@@ -35,7 +71,7 @@ body {
   background:
     linear-gradient(180deg, rgba(223, 241, 240, 0.92), rgba(243, 248, 247, 0.96) 360px),
     var(--paper);
-  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
 }
 
@@ -55,6 +91,16 @@ a {
   text-decoration: none;
 }
 
+html[data-theme="dark"] body {
+  background:
+    linear-gradient(180deg, rgba(23, 54, 59, 0.92), rgba(16, 25, 29, 0.96) 360px),
+    var(--paper);
+}
+
+h1 {
+  font-family: var(--font-display);
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -64,14 +110,16 @@ a {
   align-items: center;
   gap: 24px;
   padding: 12px clamp(18px, 5vw, 64px);
-  background: rgba(246, 244, 239, 0.95);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(14px);
 }
 
 .brand,
+.topbar-actions,
 .nav-tabs,
 .login-button,
+.theme-toggle,
 .primary-button,
 .book-actions,
 .results-head,
@@ -85,6 +133,11 @@ a {
 .brand {
   gap: 10px;
   font-weight: 900;
+}
+
+.topbar-actions {
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .brand-logo {
@@ -169,6 +222,11 @@ a {
 button:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--aqua) 70%, transparent);
+  outline-offset: 3px;
 }
 
 .app-shell {
@@ -261,6 +319,19 @@ h2 {
   box-shadow: var(--shadow);
 }
 
+.quick-stats div,
+.search-panel,
+.filters,
+.results,
+.feed-panel,
+.ranking-panel,
+.reading-now,
+.library-board article,
+.book-card,
+.book-detail-dialog {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
 .quick-stats div {
   padding: 16px;
 }
@@ -306,7 +377,21 @@ h2 {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  color: var(--ink);
+  background: var(--surface);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.search-row input:focus,
+.filters input:focus,
+.filters select:focus,
+.reader-search input:focus,
+.dialog-form input:focus,
+.dialog-form select:focus,
+.dialog-form textarea:focus {
+  border-color: var(--aqua);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--aqua) 18%, transparent);
+  outline: 0;
 }
 
 .search-row input {
@@ -406,6 +491,12 @@ h2 {
   overflow: hidden;
 }
 
+.book-card:hover {
+  border-color: color-mix(in srgb, var(--aqua) 42%, var(--line));
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
 .book-cover {
   width: 100%;
   height: 210px;
@@ -430,6 +521,7 @@ h2 {
   margin-bottom: 6px;
   font-size: 1.05rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .book-content p {
@@ -492,8 +584,8 @@ button.category-chip.active {
 }
 
 .category-chip.fiction {
-  color: #166d7a;
-  background: #dff1f0;
+  color: var(--blue);
+  background: var(--blue-soft);
 }
 
 .category-chip.fantasy {
@@ -507,8 +599,8 @@ button.category-chip.active {
 }
 
 .category-chip.mystery {
-  color: #5d6470;
-  background: #eceff3;
+  color: var(--muted);
+  background: var(--surface-soft);
 }
 
 .category-chip.scifi {
@@ -534,6 +626,16 @@ button.category-chip.active {
 .category-chip.neutral {
   color: var(--blue);
   background: var(--blue-soft);
+}
+
+html[data-theme="dark"] .category-chip.fantasy,
+html[data-theme="dark"] .category-chip.romance,
+html[data-theme="dark"] .category-chip.scifi,
+html[data-theme="dark"] .category-chip.history,
+html[data-theme="dark"] .category-chip.young,
+html[data-theme="dark"] .category-chip.bio {
+  color: var(--ink);
+  background: var(--surface-soft);
 }
 
 .book-actions {
@@ -655,7 +757,7 @@ button.category-chip.active {
   min-height: 42px;
   padding: 0 12px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
 }
@@ -832,7 +934,7 @@ button.category-chip.active {
   margin: -8px auto 20px;
   padding: 22px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -876,10 +978,40 @@ button.category-chip.active {
 }
 
 #profile-lists .list-card,
+.reading-card,
 .review-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.theme-toggle {
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  border: 0;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.theme-toggle:hover {
+  color: #fff;
+  background: var(--blue);
+}
+
+html[data-theme="dark"] .theme-toggle:hover {
+  color: #102024;
+}
+
+html[data-theme="dark"] .topbar {
+  background: rgba(16, 25, 29, 0.94);
+}
+
+.reading-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
 }
 
 .list-mini {
@@ -958,6 +1090,14 @@ button.category-chip.active {
 .favorite-card strong,
 .favorite-card span {
   display: block;
+  overflow-wrap: anywhere;
+}
+
+.reading-card span:not(.dot) {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.84rem;
 }
 
 .favorite-card span {
@@ -1002,7 +1142,7 @@ button.category-chip.active {
   gap: 12px;
   padding: 12px;
   color: var(--ink) !important;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
@@ -1222,7 +1362,7 @@ button.category-chip.active {
 }
 
 .list-option:has(input:checked) {
-  background: #fff;
+  background: var(--surface);
   border-color: var(--aqua);
   box-shadow: inset 0 0 0 1px var(--aqua);
 }
@@ -1383,7 +1523,7 @@ button.category-chip.active {
   min-height: 44px;
   padding: 10px 12px;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
   resize: vertical;
@@ -1413,7 +1553,7 @@ button.category-chip.active {
   gap: 10px;
   padding: 13px 14px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.98);
+  background: color-mix(in srgb, var(--surface) 98%, transparent);
   border: 1px solid var(--line);
   border-left: 5px solid var(--green);
   border-radius: 8px;
@@ -1481,7 +1621,7 @@ button.category-chip.active {
 
 @media (max-width: 760px) {
   .topbar {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
     gap: 12px;
   }
 
@@ -1490,11 +1630,12 @@ button.category-chip.active {
   }
 
   .nav-tabs,
-  .login-button {
+  .topbar-actions .login-button {
     display: none;
   }
 
   .topbar.menu-open .nav-tabs,
+  .topbar.menu-open .topbar-actions,
   .topbar.menu-open .login-button {
     display: flex;
     grid-column: 1 / -1;
@@ -1509,6 +1650,12 @@ button.category-chip.active {
   .topbar.menu-open .nav-tabs button,
   .topbar.menu-open .login-button {
     width: 100%;
+  }
+
+  .topbar.menu-open .topbar-actions {
+    grid-column: 1 / -1;
+    align-items: stretch;
+    justify-content: space-between;
   }
 
   .app-shell {
@@ -1528,6 +1675,7 @@ button.category-chip.active {
   .connection-card,
   .profile-stat-row,
   #profile-lists .list-card,
+  .reading-card,
   .review-card {
     grid-template-columns: 1fr;
   }

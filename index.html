@@ -17,11 +17,11 @@
         <span>BooksNexus</span>
       </a>
 
-      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menu">
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menú">
         <i class="fa-solid fa-bars" aria-hidden="true"></i>
       </button>
 
-      <nav class="nav-tabs" id="main-nav" aria-label="Navegacion principal">
+      <nav class="nav-tabs" id="main-nav" aria-label="Navegación principal">
         <button class="active" type="button" data-view-target="explorar">
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
           <span>Explorar</span>
@@ -36,22 +36,27 @@
         </button>
       </nav>
 
-      <a class="login-button" href="src/login/login.html" data-auth-link>
-        <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-        <span>Entrar</span>
-      </a>
+      <div class="topbar-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar a tema oscuro" title="Cambiar tema">
+          <i class="fa-solid fa-moon" aria-hidden="true"></i>
+        </button>
+        <a class="login-button" href="src/login/login.html" data-auth-link>
+          <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+          <span>Entrar</span>
+        </a>
+      </div>
     </header>
 
     <main class="app-shell">
       <section class="view active" id="view-explorar" data-view="explorar">
         <div class="page-heading">
           <div>
-            <p class="eyebrow">Catalogo conectado</p>
+            <p class="eyebrow">Catálogo conectado</p>
             <h1>Explora libros, guarda lecturas y comparte hallazgos.</h1>
-            <p>Busca titulos desde BooksNexus y arma una biblioteca lista para crecer con usuarios, listas y resenas.</p>
+            <p>Busca títulos desde BooksNexus y arma una biblioteca lista para crecer con usuarios, listas y reseñas.</p>
           </div>
 
-          <aside class="quick-stats" aria-label="Resumen de catalogo">
+          <aside class="quick-stats" aria-label="Resumen de catálogo">
             <div>
               <span>Libros encontrados</span>
               <strong id="total-books">0</strong>
@@ -64,15 +69,15 @@
         </div>
 
         <form class="search-panel" id="search-form" aria-label="Buscar libros">
-          <label for="search-input">Buscar en el catalogo</label>
+          <label for="search-input">Buscar en el catálogo</label>
           <div class="search-row">
-            <input id="search-input" name="q" type="search" placeholder="Cien anos de soledad, Pedro Paramo, Borges..." autocomplete="off" required />
+            <input id="search-input" name="q" type="search" placeholder="Cien años de soledad, Pedro Páramo, Borges..." autocomplete="off" minlength="3" maxlength="120" required />
             <button class="primary-button" type="submit">
               <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
               <span>Buscar</span>
             </button>
           </div>
-          <p class="status" id="status" role="status">Escribe al menos 3 letras para buscar automaticamente.</p>
+          <p class="status" id="status" role="status">Escribe al menos 3 letras para buscar automáticamente.</p>
         </form>
 
         <div class="catalog-layout">
@@ -80,7 +85,7 @@
             <h2>Filtros</h2>
             <label>
               Estado
-              <div class="segmented-control" aria-label="Filtros del catalogo">
+              <div class="segmented-control" aria-label="Filtros del catálogo">
                 <button class="active" type="button" data-filter="all">Todos</button>
                 <button type="button" data-filter="saved">Guardados</button>
               </div>
@@ -92,17 +97,17 @@
               </select>
             </label>
             <label>
-              Categoria
-              <div class="category-tags" id="category-filter" aria-label="Filtrar por categoria">
-                <button class="category-chip active" type="button" data-category="" data-category-name="Todas las categorias" title="Todas las categorias">Todas</button>
-                <button class="category-chip fiction" type="button" data-category="fiction" data-category-name="Ficcion" title="Ficcion">Ficcion</button>
-                <button class="category-chip fantasy" type="button" data-category="fantasy" data-category-name="Fantasia" title="Fantasia">Fantasia</button>
+              Categoría
+              <div class="category-tags" id="category-filter" aria-label="Filtrar por categoría">
+                <button class="category-chip active" type="button" data-category="" data-category-name="Todas las categorías" title="Todas las categorías">Todas</button>
+                <button class="category-chip fiction" type="button" data-category="fiction" data-category-name="Ficción" title="Ficción">Ficción</button>
+                <button class="category-chip fantasy" type="button" data-category="fantasy" data-category-name="Fantasía" title="Fantasía">Fantasía</button>
                 <button class="category-chip romance" type="button" data-category="romance" data-category-name="Romance" title="Romance">Romance</button>
                 <button class="category-chip mystery" type="button" data-category="mystery" data-category-name="Misterio" title="Misterio">Misterio</button>
-                <button class="category-chip scifi" type="button" data-category="science_fiction" data-category-name="Ciencia ficcion" title="Ciencia ficcion">Sci-fi</button>
+                <button class="category-chip scifi" type="button" data-category="science_fiction" data-category-name="Ciencia ficción" title="Ciencia ficción">Sci-fi</button>
                 <button class="category-chip history" type="button" data-category="history" data-category-name="Historia" title="Historia">Historia</button>
                 <button class="category-chip young" type="button" data-category="young_adult" data-category-name="Young adult" title="Young adult">YA</button>
-                <button class="category-chip bio" type="button" data-category="biography" data-category-name="Biografia" title="Biografia">Bio</button>
+                <button class="category-chip bio" type="button" data-category="biography" data-category-name="Biografía" title="Biografía">Bio</button>
               </div>
             </label>
           </aside>
@@ -122,11 +127,11 @@
           <div>
             <p class="eyebrow">Actividad social</p>
             <h1>Comunidad</h1>
-            <p>Resenas, rankings y recomendaciones para que la red de lectores tenga vida desde el primer vistazo.</p>
+            <p>Reseñas, rankings y recomendaciones para que la red de lectores tenga vida desde el primer vistazo.</p>
           </div>
           <aside class="quick-stats" aria-label="Resumen de comunidad">
             <div>
-              <span>Resenas</span>
+              <span>Reseñas</span>
               <strong id="community-review-count">0</strong>
             </div>
             <div>
@@ -138,7 +143,7 @@
 
         <div class="activity-grid">
           <article class="feed-panel">
-            <h2>Resenas recientes</h2>
+            <h2>Reseñas recientes</h2>
             <div id="community-reviews"></div>
           </article>
 
@@ -151,7 +156,7 @@
             <h2>Lectores</h2>
             <label class="reader-search">
               Buscar lector
-              <input id="reader-search" type="search" placeholder="Usuario o nombre" autocomplete="off" />
+              <input id="reader-search" type="search" placeholder="Usuario o nombre" autocomplete="off" maxlength="80" />
             </label>
             <ol id="reader-list"></ol>
           </article>
@@ -164,7 +169,7 @@
           <div>
             <p class="eyebrow">Perfil de lector</p>
             <h1 id="profile-name">Mi perfil</h1>
-            <p id="profile-username">Inicia sesion para ver tus datos reales.</p>
+            <p id="profile-username">Inicia sesión para ver tus datos reales.</p>
             <div class="profile-social-counts" id="profile-social-counts" hidden>
               <button type="button" data-profile-connection="followers">
                 <strong id="profile-followers-count">0</strong>
@@ -193,7 +198,7 @@
         </div>
 
         <div class="reading-now">
-          <span id="profile-email">Sin sesion activa</span>
+          <span id="profile-email">Sin sesión activa</span>
           <strong id="profile-status">Conecta con tu cuenta desde la pantalla de acceso.</strong>
           <div class="profile-summary" id="profile-summary"></div>
         </div>
@@ -202,11 +207,11 @@
           <div class="lock-orbit" aria-hidden="true">
             <i class="fa-solid fa-lock"></i>
           </div>
-          <strong>Aun no has iniciado sesion</strong>
-          <p>Entra con tu usuario para activar favoritos, lecturas, listas y estadisticas.</p>
+          <strong>Aún no has iniciado sesión</strong>
+          <p>Entra con tu usuario para activar favoritos, lecturas, listas y estadísticas.</p>
           <a class="primary-button" href="src/login/login.html">
             <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-            <span>Iniciar sesion</span>
+            <span>Iniciar sesión</span>
           </a>
         </div>
 
@@ -238,17 +243,17 @@
             </div>
             <div class="timeline-item">
               <span class="dot"></span>
-              <p><strong id="profile-last-favorite">Sin actividad</strong> Guarda un libro para verlo aqui.</p>
+              <p><strong id="profile-last-favorite">Sin actividad</strong> Guarda un libro para verlo aquí.</p>
             </div>
             <div id="profile-reading"></div>
             <div class="section-head profile-subsection">
-              <h2>Mis resenas</h2>
+              <h2>Mis reseñas</h2>
             </div>
             <div id="profile-reviews"></div>
           </article>
 
           <article>
-            <h2>Estadisticas</h2>
+            <h2>Estadísticas</h2>
             <div class="stats-row">
               <span>Libros favoritos</span>
               <strong id="profile-stats-favorites">0</strong>
@@ -279,7 +284,7 @@
     <dialog class="book-detail-dialog action-dialog" id="action-dialog" aria-labelledby="action-title">
       <form method="dialog" class="dialog-form" id="action-form">
         <div class="dialog-head">
-          <h2 id="action-title">Accion</h2>
+          <h2 id="action-title">Acción</h2>
           <button class="icon-button" id="action-cancel" type="button" aria-label="Cerrar" title="Cerrar">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
@@ -296,7 +301,7 @@
 
     <dialog class="book-detail-dialog" id="reader-dialog" aria-labelledby="reader-title">
       <div class="dialog-head">
-        <h2 id="reader-title">Perfil publico</h2>
+        <h2 id="reader-title">Perfil público</h2>
         <button class="icon-button" id="reader-close" type="button" aria-label="Cerrar perfil" title="Cerrar">
           <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>

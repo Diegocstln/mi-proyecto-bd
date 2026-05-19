@@ -21,7 +21,7 @@
         <img class="auth-logo" src="../assets/logo_white.png" alt="BooksNexus" width="150" />
         <p class="eyebrow">BooksNexus</p>
         <h1>Entra a tu biblioteca social</h1>
-        <p>Inicia sesion con tu usuario o crea tu cuenta para guardar lecturas.</p>
+        <p>Inicia sesión con tu usuario o crea tu cuenta para guardar lecturas.</p>
       </section>
 
       <section class="auth-panel" aria-label="Formulario de acceso">
@@ -39,23 +39,23 @@
         <form id="auth-form">
           <label class="register-only" hidden>
             Nombre
-            <input id="nombre" name="nombre" type="text" placeholder="Mely Gonzalez" autocomplete="name" />
+            <input id="nombre" name="nombre" type="text" minlength="2" maxlength="100" placeholder="Mely Gonzalez" autocomplete="name" />
           </label>
           <label class="register-only" hidden>
             Usuario
-            <input id="username" name="username" type="text" placeholder="mely_reader" autocomplete="username" />
+            <input id="username" name="username" type="text" minlength="3" maxlength="40" pattern="[a-z0-9_]{3,40}" placeholder="mely_reader" autocomplete="username" />
           </label>
           <label class="register-only" hidden>
             Correo
-            <input id="correo" name="correo" type="email" placeholder="correo@escuela.edu" autocomplete="email" />
+            <input id="correo" name="correo" type="email" maxlength="120" placeholder="correo@escuela.edu" autocomplete="email" />
           </label>
           <label>
             <span id="identifier-label">Usuario o correo</span>
-            <input id="usuario" name="usuario" type="text" placeholder="mely_reader o correo@escuela.edu" autocomplete="username" required />
+            <input id="usuario" name="usuario" type="text" maxlength="120" placeholder="mely_reader o correo@escuela.edu" autocomplete="username" required />
           </label>
           <label>
-            Contrasena
-            <input id="password" name="password" type="password" placeholder="********" autocomplete="current-password" required />
+            Contraseña
+            <input id="password" name="password" type="password" minlength="8" maxlength="128" placeholder="********" autocomplete="current-password" required />
           </label>
           <button class="primary-button" id="submit-button" type="submit">
             <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>

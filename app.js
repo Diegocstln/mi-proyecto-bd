@@ -1,4 +1,5 @@
 const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
+const MAX_READING_PAGES = 5000;
 
 const state = {
   books: [],
@@ -28,6 +29,7 @@ const filterButtons = document.querySelectorAll('[data-filter]');
 const navButtons = document.querySelectorAll('[data-view-target]');
 const topbar = document.querySelector('.topbar');
 const menuToggle = document.querySelector('.menu-toggle');
+const themeToggle = document.querySelector('#theme-toggle');
 const authLinks = document.querySelectorAll('[data-auth-link]');
 const profileName = document.querySelector('#profile-name');
 const profileUsername = document.querySelector('#profile-username');
@@ -72,10 +74,68 @@ const toastStack = document.querySelector('#toast-stack');
 let searchTimer = 0;
 let readerSearchTimer = 0;
 let activeActionResolver = null;
+let lockedScrollY = 0;
 const readerDialog = document.querySelector('#reader-dialog');
 const readerTitle = document.querySelector('#reader-title');
 const readerBody = document.querySelector('#reader-body');
 const readerClose = document.querySelector('#reader-close');
+const dialogs = [detailDialog, actionDialog, readerDialog].filter(Boolean);
+
+function applyTheme(theme) {
+  const safeTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = safeTheme;
+  localStorage.setItem('booksnexus_theme', safeTheme);
+
+  if (themeToggle) {
+    const isDark = safeTheme === 'dark';
+    themeToggle.setAttribute('aria-label', isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    themeToggle.title = isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro';
+    themeToggle.innerHTML = `<i class="fa-solid ${isDark ? 'fa-sun' : 'fa-moon'}" aria-hidden="true"></i>`;
+  }
+}
+
+applyTheme(localStorage.getItem('booksnexus_theme') || 'light');
+
+function hasOpenDialog() {
+  return dialogs.some((dialog) => dialog.open);
+}
+
+function lockBackgroundScroll() {
+  if (document.body.classList.contains('dialog-scroll-lock')) {
+    return;
+  }
+
+  lockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.documentElement.classList.add('dialog-scroll-lock');
+  document.body.classList.add('dialog-scroll-lock');
+  document.body.style.top = `-${lockedScrollY}px`;
+}
+
+function unlockBackgroundScroll() {
+  if (hasOpenDialog()) {
+    return;
+  }
+
+  document.documentElement.classList.remove('dialog-scroll-lock');
+  document.body.classList.remove('dialog-scroll-lock');
+  document.body.style.top = '';
+  window.scrollTo(0, lockedScrollY);
+}
+
+function openDialog(dialog) {
+  if (!dialog.open) {
+    dialog.showModal();
+  }
+
+  lockBackgroundScroll();
+}
+
+dialogs.forEach((dialog) => {
+  dialog.addEventListener('close', unlockBackgroundScroll);
+  dialog.addEventListener('cancel', () => {
+    window.setTimeout(unlockBackgroundScroll, 0);
+  });
+});
 
 function setStatus(message, isError = false) {
   statusElement.textContent = message;
@@ -91,7 +151,7 @@ function showNotice(message, type = 'info', title = '') {
   const defaults = {
     info: 'Listo',
     success: 'Listo',
-    error: 'Algo no salio bien',
+    error: 'Algo no salió bien',
   };
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -112,38 +172,47 @@ function showNotice(message, type = 'info', title = '') {
 
 function translateError(message) {
   const translations = {
-    'Username and password are required': 'Escribe tu usuario y contrasena.',
-    'Invalid username or password': 'Usuario o contrasena incorrectos.',
-    'Email and password are required': 'Escribe tu correo y contrasena.',
-    'Invalid email or password': 'Correo o contrasena incorrectos.',
+    'Username and password are required': 'Escribe tu usuario y contraseña.',
+    'Invalid username or password': 'Usuario o contraseña incorrectos.',
+    'Email and password are required': 'Escribe tu correo y contraseña.',
+    'Invalid email or password': 'Correo o contraseña incorrectos.',
     'Username or email already exists': 'Ese usuario o correo ya existe.',
     'Name must be at least 2 characters': 'El nombre debe tener al menos 2 caracteres.',
-    'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres, solo letras, numeros o guion bajo.',
-    'A valid email is required': 'Escribe un correo valido.',
-    'Password must be at least 8 characters': 'La contrasena debe tener al menos 8 caracteres.',
+    'Name must be 100 characters or less': 'El nombre debe tener 100 caracteres o menos.',
+    'Username must be 3-40 characters and use letters, numbers or underscore': 'El usuario debe tener entre 3 y 40 caracteres, solo letras, números o guion bajo.',
+    'A valid email is required': 'Escribe un correo válido.',
+    'Email must be 120 characters or less': 'El correo debe tener 120 caracteres o menos.',
+    'Password must be at least 8 characters': 'La contraseña debe tener al menos 8 caracteres.',
+    'Password must be 128 characters or less': 'La contraseña debe tener 128 caracteres o menos.',
     'You cannot follow yourself': 'No puedes seguirte a ti mismo.',
-    'Invalid reading status': 'El estado de lectura no es valido.',
-    'Rating must be an integer between 1 and 5': 'La calificacion debe ser de 1 a 5.',
-    'Review comment must be at least 3 characters': 'La resena necesita al menos 3 caracteres.',
+    'Invalid reading status': 'El estado de lectura no es válido.',
+    'Reading progress must be a positive integer': 'El progreso debe ser un número entero positivo.',
+    [`Reading progress must be between 0 and ${MAX_READING_PAGES} pages`]: `El progreso debe estar entre 0 y ${MAX_READING_PAGES} páginas.`,
+    'Reading entry not found': 'No encontramos esa lectura.',
+    'Rating must be an integer between 1 and 5': 'La calificación debe ser de 1 a 5.',
+    'Review comment must be at least 3 characters': 'La reseña necesita al menos 3 caracteres.',
+    'Review comment must be 1000 characters or less': 'La reseña debe tener 1000 caracteres o menos.',
     'List name must be at least 2 characters': 'El nombre de la lista necesita al menos 2 caracteres.',
-    'Invalid privacy value': 'La privacidad de la lista no es valida.',
-    'Biography must be 500 characters or less': 'La biografia debe tener 500 caracteres o menos.',
-    'Avatar URL must be a valid URL': 'La URL del avatar debe ser valida.',
-    'List description must be 500 characters or less': 'La descripcion de la lista debe tener 500 caracteres o menos.',
+    'List name must be 100 characters or less': 'El nombre de la lista debe tener 100 caracteres o menos.',
+    'Invalid privacy value': 'La privacidad de la lista no es válida.',
+    'Biography must be 500 characters or less': 'La biografía debe tener 500 caracteres o menos.',
+    'Avatar URL must be a valid URL': 'La URL del avatar debe ser válida.',
+    'List description must be 500 characters or less': 'La descripción de la lista debe tener 500 caracteres o menos.',
     'List not found': 'No encontramos esa lista.',
-    'Book not found in list': 'Ese libro ya no esta en la lista.',
-    'Review not found': 'No encontramos esa resena.',
+    'Book not found in list': 'Ese libro ya no está en la lista.',
+    'Review not found': 'No encontramos esa reseña.',
   };
 
-  return translations[message] || message || 'No se pudo completar la accion.';
+  return translations[message] || message || 'No se pudo completar la acción.';
 }
 
 function openActionDialog({ title, body, primaryLabel = 'Guardar' }) {
   actionTitle.textContent = title;
   actionForm.reset();
   actionBody.innerHTML = body;
+  applyFieldGuards(actionBody);
   actionPrimary.textContent = primaryLabel;
-  actionDialog.showModal();
+  openDialog(actionDialog);
 
   return new Promise((resolve) => {
     activeActionResolver = resolve;
@@ -208,14 +277,14 @@ function getBookCategories(book) {
 function getCategoryClass(category) {
   const value = normalizeText(category).replace(/\s+/g, '_');
 
-  if (value.includes('fantasy') || value.includes('fantasia')) return 'fantasy';
+  if (value.includes('fantasy') || value.includes('fantasía') || value.includes('fantasia')) return 'fantasy';
   if (value.includes('romance')) return 'romance';
   if (value.includes('mystery') || value.includes('misterio')) return 'mystery';
   if (value.includes('science') || value.includes('ciencia')) return 'scifi';
   if (value.includes('history') || value.includes('historia')) return 'history';
   if (value.includes('young')) return 'young';
   if (value.includes('bio')) return 'bio';
-  if (value.includes('fiction') || value.includes('ficcion')) return 'fiction';
+  if (value.includes('fiction') || value.includes('ficción') || value.includes('ficcion')) return 'fiction';
 
   return 'neutral';
 }
@@ -238,7 +307,7 @@ function getSpanishDescription(detail) {
     detail.resumen ||
     detail.sinopsis ||
     detail.description ||
-    'El catalogo no tiene descripcion en espanol para este libro.'
+    'Open Library no ofrece una descripción en español para este libro por ahora.'
   );
 }
 
@@ -270,6 +339,118 @@ function getAvatarUrl(user) {
   return user?.avatar_url || user?.avatarUrl || user?.avatar || '';
 }
 
+function stripUnsafeText(value, maxLength = 500) {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[<>]/g, '')
+    .slice(0, maxLength);
+}
+
+function sanitizeUsername(value) {
+  return stripUnsafeText(value, 40).toLowerCase().replace(/[^a-z0-9_]/g, '');
+}
+
+function sanitizeUrl(value) {
+  return stripUnsafeText(value, 300).replace(/\s/g, '');
+}
+
+function applyFieldGuards(root = document) {
+  root.querySelectorAll('input:not([type="password"]):not([type="radio"]):not([type="checkbox"]), textarea').forEach((field) => {
+    field.addEventListener('input', () => {
+      const maxLength = Number(field.getAttribute('maxlength')) || 500;
+      const original = field.value;
+      let nextValue = field.name === 'username'
+        ? sanitizeUsername(original)
+        : field.type === 'url'
+          ? sanitizeUrl(original)
+          : stripUnsafeText(original, maxLength);
+
+      if (field.type === 'email') {
+        nextValue = nextValue.replace(/\s/g, '').slice(0, maxLength);
+      }
+
+      if (nextValue !== original) {
+        field.value = nextValue;
+      }
+    });
+
+    field.addEventListener('paste', () => {
+      window.setTimeout(() => field.dispatchEvent(new Event('input', { bubbles: true })), 0);
+    });
+  });
+}
+
+function renderReadingStatusOptions(selected = 'leyendo') {
+  const statuses = [
+    ['pendiente', 'Pendiente'],
+    ['leyendo', 'Leyendo'],
+    ['terminado', 'Terminado'],
+    ['abandonado', 'Abandonado'],
+  ];
+
+  return statuses
+    .map(([value, label]) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`)
+    .join('');
+}
+
+function getReadingProgress(value) {
+  const progress = Number(value);
+  return Number.isInteger(progress) && progress > 0 ? progress : 0;
+}
+
+function renderReadingForm(reading = {}) {
+  const selected = reading.estado_lectura || 'leyendo';
+  const progress = getReadingProgress(reading.progreso_paginas);
+
+  return `
+    <label>
+      Estado
+      <select name="estadoLectura" required>
+        ${renderReadingStatusOptions(selected)}
+      </select>
+    </label>
+    <label>
+      Progreso en páginas
+      <input name="progresoPaginas" type="number" min="0" max="${MAX_READING_PAGES}" step="1" value="${progress}" placeholder="0" />
+    </label>
+    <span class="inline-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Máximo ${MAX_READING_PAGES} páginas.</span>
+  `;
+}
+
+function normalizeProgressInput(value) {
+  const progress = Number(value || 0);
+
+  if (!Number.isInteger(progress) || progress < 0 || progress > MAX_READING_PAGES) {
+    throw new Error(`Reading progress must be between 0 and ${MAX_READING_PAGES} pages`);
+  }
+
+  return progress;
+}
+
+function getReadingIdentifier(reading = {}) {
+  return reading.id_historial || reading.openlibrary_key || reading.openLibraryKey || '';
+}
+
+function findReadingByIdentifier(identifier) {
+  const value = String(identifier || '');
+
+  return (state.library.reading || []).find((item) => (
+    String(item.id_historial || '') === value ||
+    String(item.openlibrary_key || item.openLibraryKey || '') === value
+  ));
+}
+
+function bookPayload(book) {
+  return {
+    openLibraryKey: book.id,
+    title: book.title,
+    authors: book.authors,
+    firstPublishYear: book.firstPublishYear || null,
+    coverUrl: book.coverUrl || null,
+    categories: getBookCategories(book),
+  };
+}
+
 function renderAvatar(user, className = 'avatar') {
   const name = escapeHtml(user?.nombre || user?.username || 'BooksNexus');
   const avatarUrl = getAvatarUrl(user);
@@ -292,7 +473,7 @@ function paintAvatar(element, user) {
 }
 
 function normalizeBook(book, index) {
-  const title = book.title || 'Titulo no disponible';
+  const title = book.title || 'Título no disponible';
   const firstPublishYear = Number(book.firstPublishYear) || 0;
   const id = String(book.openLibraryKey || book.id || book.key || `book-${index}`);
 
@@ -365,8 +546,8 @@ function renderBooks() {
     grid.innerHTML = `
       <article class="book-card empty-card">
         <div class="book-content">
-          <h3>No hay resultados todavia</h3>
-          <p>Busca por titulo o autor para consultar libros desde la API.</p>
+          <h3>No hay resultados todavía</h3>
+          <p>Busca por título o autor para consultar libros desde la API.</p>
         </div>
       </article>
     `;
@@ -389,10 +570,10 @@ function renderBooks() {
             <span class="book-meta">${author}</span>
             <h3>${title}</h3>
             <div class="tag-row book-category-row">
-              ${renderCategoryTags(categories.length ? categories : ['Catalogo'])}
-              <span class="tag">${isSaved ? 'Guardado' : 'Catalogo'}</span>
+              ${renderCategoryTags(categories.length ? categories : ['Catálogo'])}
+              <span class="tag">${isSaved ? 'Guardado' : 'Catálogo'}</span>
             </div>
-            <p>Resultado conectado al catalogo externo de BooksNexus.</p>
+            <p>Resultado conectado al catálogo externo de BooksNexus.</p>
           </div>
           <div class="book-actions">
             <button class="book-action ${isSaved ? 'saved' : ''}" type="button" data-save="${bookId}">
@@ -409,7 +590,7 @@ function renderBooks() {
             </button>
             <button class="book-action compact" type="button" data-review="${bookId}">
               <i class="fa-solid fa-star" aria-hidden="true"></i>
-              <span>Resena</span>
+              <span>Reseña</span>
             </button>
             <button class="book-action compact" type="button" data-list-book="${bookId}">
               <i class="fa-solid fa-list" aria-hidden="true"></i>
@@ -434,7 +615,7 @@ function renderRanking() {
     ? rankedBooks
         .map((book) => `<li><strong>${escapeHtml(book.title)}</strong><br><span>${escapeHtml(formatAuthors(book.authors))} - ${book.firstPublishYear}</span></li>`)
         .join('')
-    : '<li><strong>Sin busquedas todavia</strong><br><span>El ranking se llena con los resultados consultados.</span></li>';
+    : '<li><strong>Sin búsquedas todavía</strong><br><span>El ranking se llena con los resultados consultados.</span></li>';
 }
 
 async function searchBooks(query) {
@@ -492,7 +673,7 @@ async function getCurrentUser() {
   });
 
   if (!response.ok) {
-    throw new Error('Sesion no valida');
+    throw new Error('Sesión no válida');
   }
 
   return response.json();
@@ -629,13 +810,7 @@ async function saveFavorite(book) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${state.token}`,
     },
-    body: JSON.stringify({
-      openLibraryKey: book.id,
-      title: book.title,
-      authors: book.authors,
-      firstPublishYear: book.firstPublishYear || null,
-      coverUrl: book.coverUrl || null,
-    }),
+    body: JSON.stringify(bookPayload(book)),
   });
 
   if (!response.ok) {
@@ -663,6 +838,9 @@ async function removeFavorite(book) {
 }
 
 async function markReading(book, estadoLectura = 'leyendo') {
+  const payload = typeof estadoLectura === 'object'
+    ? estadoLectura
+    : { estadoLectura };
   const response = await fetch(`${apiBaseUrl}/api/library/reading`, {
     method: 'POST',
     headers: {
@@ -670,20 +848,55 @@ async function markReading(book, estadoLectura = 'leyendo') {
       Authorization: `Bearer ${state.token}`,
     },
     body: JSON.stringify({
-      estadoLectura,
-      book: {
-        openLibraryKey: book.id,
-        title: book.title,
-        authors: book.authors,
-        firstPublishYear: book.firstPublishYear || null,
-        coverUrl: book.coverUrl || null,
-      },
+      estadoLectura: payload.estadoLectura,
+      progresoPaginas: normalizeProgressInput(payload.progresoPaginas),
+      book: bookPayload(book),
     }),
   });
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'No se pudo guardar el historial');
+  }
+
+  return response.json();
+}
+
+async function updateReading(idHistorial, payload) {
+  const target = /^[1-9]\d*$/.test(String(idHistorial))
+    ? String(idHistorial)
+    : `books/${encodeURIComponent(String(idHistorial || '').replace('/works/', ''))}`;
+  const response = await fetch(`${apiBaseUrl}/api/library/reading/${target}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${state.token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo actualizar el historial');
+  }
+
+  return response.json();
+}
+
+async function deleteReading(idHistorial) {
+  const target = /^[1-9]\d*$/.test(String(idHistorial))
+    ? String(idHistorial)
+    : `books/${encodeURIComponent(String(idHistorial || '').replace('/works/', ''))}`;
+  const response = await fetch(`${apiBaseUrl}/api/library/reading/${target}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${state.token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'No se pudo eliminar la lectura');
   }
 
   return response.json();
@@ -699,19 +912,13 @@ async function saveReview(book, comentario, calificacion) {
     body: JSON.stringify({
       comentario,
       calificacion,
-      book: {
-        openLibraryKey: book.id,
-        title: book.title,
-        authors: book.authors,
-        firstPublishYear: book.firstPublishYear || null,
-        coverUrl: book.coverUrl || null,
-      },
+      book: bookPayload(book),
     }),
   });
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'No se pudo guardar la resena');
+    throw new Error(data.error || 'No se pudo guardar la reseña');
   }
 
   return response.json();
@@ -729,7 +936,7 @@ async function updateReview(idResena, payload) {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'No se pudo actualizar la resena');
+    throw new Error(data.error || 'No se pudo actualizar la reseña');
   }
 
   return response.json();
@@ -745,7 +952,7 @@ async function deleteReview(idResena) {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || 'No se pudo eliminar la resena');
+    throw new Error(data.error || 'No se pudo eliminar la reseña');
   }
 
   return response.json();
@@ -815,13 +1022,7 @@ async function addBookToList(idLista, book) {
       Authorization: `Bearer ${state.token}`,
     },
     body: JSON.stringify({
-      book: {
-        openLibraryKey: book.id,
-        title: book.title,
-        authors: book.authors,
-        firstPublishYear: book.firstPublishYear || null,
-        coverUrl: book.coverUrl || null,
-      },
+      book: bookPayload(book),
     }),
   });
 
@@ -858,7 +1059,7 @@ function syncSavedFromFavorites(favorites) {
   profileLastFavorite.textContent = lastFavorite ? 'Favorito reciente' : 'Sin actividad';
   profileLastFavorite.parentElement.lastChild.textContent = lastFavorite
     ? ` ${lastFavorite.title}`
-    : ' Guarda un libro para verlo aqui.';
+    : ' Guarda un libro para verlo aquí.';
 
   persistSavedBooks();
 }
@@ -877,7 +1078,7 @@ function renderPeopleList(people, emptyText) {
 }
 
 function renderConnectionList(people, type) {
-  const emptyText = type === 'followers' ? 'Todavia nadie te sigue.' : 'Todavia no sigues a ningun lector.';
+  const emptyText = type === 'followers' ? 'Todavía nadie te sigue.' : 'Todavía no sigues a ningún lector.';
   const followingIds = getFollowingIds();
 
   if (!people?.length) {
@@ -933,7 +1134,7 @@ async function openProfileConnections(type) {
 
   readerTitle.textContent = type === 'followers' ? 'Seguidores' : 'Seguidos';
   readerBody.innerHTML = '<p class="status">Cargando lectores...</p>';
-  readerDialog.showModal();
+  openDialog(readerDialog);
 
   try {
     await refreshLibrary();
@@ -955,10 +1156,10 @@ function formatCount(value, singular, plural) {
 
 function renderReaderMeta(user) {
   if ('total_resenas' in user || 'total_favoritos' in user) {
-    return `${formatCount(user.total_resenas, 'resena', 'resenas')} &middot; ${formatCount(user.total_favoritos, 'favorito', 'favoritos')}`;
+    return `${formatCount(user.total_resenas, 'reseña', 'reseñas')} &middot; ${formatCount(user.total_favoritos, 'favorito', 'favoritos')}`;
   }
 
-  return `${formatCount(user.public_lists, 'lista publica', 'listas publicas')} &middot; ${formatCount(user.followers, 'seguidor', 'seguidores')}`;
+  return `${formatCount(user.public_lists, 'lista pública', 'listas públicas')} &middot; ${formatCount(user.followers, 'seguidor', 'seguidores')}`;
 }
 
 function renderListBooks(list) {
@@ -972,7 +1173,7 @@ function renderListBooks(list) {
     <div class="list-books">
       ${books.map((book) => `
         <div class="list-book">
-          <span>${escapeHtml(book.title || book.titulo || 'Libro sin titulo')}</span>
+          <span>${escapeHtml(book.title || book.titulo || 'Libro sin título')}</span>
           <button class="icon-button" type="button" data-list-book-remove="${list.id_lista}" data-work-key="${escapeHtml(book.openLibraryKey || book.openlibrary_key || '')}" aria-label="Quitar ${escapeHtml(book.title || book.titulo || 'libro')} de ${escapeHtml(list.nombre_lista)}" title="Quitar de la lista">
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
@@ -986,7 +1187,7 @@ function renderListPreview(list) {
   const books = (list.books || []).slice(0, 3);
 
   if (!books.length) {
-    return '<div class="list-preview empty">Sin libros todavia</div>';
+    return '<div class="list-preview empty">Sin libros todavía</div>';
   }
 
   return `
@@ -1017,7 +1218,7 @@ function renderFavorites() {
           </div>
         `)
         .join('')
-    : '<p class="status">Aun no tienes favoritos guardados.</p>';
+    : '<p class="status">Aún no tienes favoritos guardados.</p>';
 }
 
 function renderProfileSummary() {
@@ -1028,7 +1229,7 @@ function renderProfileSummary() {
   profileSummary.innerHTML = `
     <span><strong>${state.favorites.length}</strong> favoritos</span>
     <span><strong>${lists.length}</strong> listas</span>
-    <span><strong>${reviews.length}</strong> resenas</span>
+    <span><strong>${reviews.length}</strong> reseñas</span>
     <span><strong>${reading.length}</strong> lecturas</span>
   `;
 }
@@ -1051,19 +1252,32 @@ function renderLibrary() {
           </button>
         `)
         .join('')
-    : '<div class="list-card"><span>Sin listas todavia</span><strong>0 libros</strong></div>';
+    : '<div class="list-card"><span>Sin listas todavía</span><strong>0 libros</strong></div>';
 
   profileReading.innerHTML = reading.length
     ? reading
-        .slice(0, 4)
-        .map((item) => `
-          <div class="timeline-item">
+        .map((item) => {
+          const readingId = escapeHtml(getReadingIdentifier(item));
+          return `
+          <div class="timeline-item reading-card" data-reading-id="${readingId}">
             <span class="dot"></span>
-            <p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>
+            <div>
+              <p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>
+              <span>${getReadingProgress(item.progreso_paginas)} páginas registradas</span>
+            </div>
+            <div class="list-actions">
+              <button class="icon-button" type="button" data-reading-edit="${readingId}" aria-label="Editar lectura de ${escapeHtml(item.titulo)}" title="Editar lectura">
+                <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              </button>
+              <button class="icon-button danger-button" type="button" data-reading-delete="${readingId}" aria-label="Eliminar lectura de ${escapeHtml(item.titulo)}" title="Eliminar lectura">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              </button>
+            </div>
           </div>
-        `)
+        `;
+        })
         .join('')
-    : '';
+    : '<p class="status">Aún no tienes historial de lectura.</p>';
   profileReviews.innerHTML = reviews.length
     ? reviews
         .map((review) => `
@@ -1074,17 +1288,17 @@ function renderLibrary() {
               <p>${escapeHtml(review.comentario)}</p>
             </div>
             <div class="list-actions">
-              <button class="icon-button" type="button" data-review-edit="${review.id_resena}" aria-label="Editar resena de ${escapeHtml(review.titulo)}" title="Editar resena">
+              <button class="icon-button" type="button" data-review-edit="${review.id_resena}" aria-label="Editar reseña de ${escapeHtml(review.titulo)}" title="Editar reseña">
                 <i class="fa-solid fa-pen" aria-hidden="true"></i>
               </button>
-              <button class="icon-button" type="button" data-review-delete="${review.id_resena}" aria-label="Eliminar resena de ${escapeHtml(review.titulo)}" title="Eliminar resena">
+              <button class="icon-button" type="button" data-review-delete="${review.id_resena}" aria-label="Eliminar reseña de ${escapeHtml(review.titulo)}" title="Eliminar reseña">
                 <i class="fa-solid fa-trash" aria-hidden="true"></i>
               </button>
             </div>
           </div>
         `)
         .join('')
-    : '<p class="status">Aun no has escrito resenas.</p>';
+    : '<p class="status">Aún no has escrito reseñas.</p>';
   renderFavorites();
   renderProfileSummary();
   updateProfileSocialCounts();
@@ -1107,15 +1321,15 @@ function renderCommunity() {
                 ${renderAvatar(review, 'reader-avatar mini-avatar')}
                 <div>
                 <strong>${escapeHtml(review.nombre || review.username)}</strong>
-                <span>califico "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
+                <span>calificó "${escapeHtml(review.titulo)}" con ${escapeHtml(review.calificacion)} estrellas</span>
                 </div>
               </div>
               ${state.user && Number(review.id_usuario) === Number(state.user.id_usuario) ? `
                 <div class="kebab-actions">
-                  <button class="icon-button" type="button" data-community-review-edit="${review.id_resena}" aria-label="Editar resena" title="Editar resena">
+                  <button class="icon-button" type="button" data-community-review-edit="${review.id_resena}" aria-label="Editar reseña" title="Editar reseña">
                     <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
                   </button>
-                  <button class="icon-button danger-button" type="button" data-community-review-delete="${review.id_resena}" aria-label="Eliminar resena" title="Eliminar resena">
+                  <button class="icon-button danger-button" type="button" data-community-review-delete="${review.id_resena}" aria-label="Eliminar reseña" title="Eliminar reseña">
                     <i class="fa-solid fa-trash" aria-hidden="true"></i>
                   </button>
                 </div>
@@ -1127,9 +1341,9 @@ function renderCommunity() {
         .join('')
     : `
       <div class="review">
-        <strong>Sin resenas todavia</strong>
-        <span>Las publicaciones apareceran cuando alguien resene un libro.</span>
-        <p>Busca un libro, inicia sesion y usa el boton de estrella para crear la primera.</p>
+        <strong>Sin reseñas todavía</strong>
+        <span>Las publicaciones aparecerán cuando alguien reseñe un libro.</span>
+        <p>Busca un libro, inicia sesión y usa el botón de estrella para crear la primera.</p>
       </div>
     `;
 
@@ -1138,28 +1352,28 @@ function renderCommunity() {
         .map((book) => `
           <li>
             <strong>${escapeHtml(book.titulo)}</strong><br>
-            <span>${book.total_resenas} resenas · ${book.total_favoritos} favoritos</span>
+            <span>${book.total_resenas} reseñas · ${book.total_favoritos} favoritos</span>
           </li>
         `)
         .join('')
-    : '<li><strong>Sin actividad esta semana</strong><br><span>El ranking se llena con favoritos y resenas de los ultimos 7 dias.</span></li>';
+    : '<li><strong>Sin actividad esta semana</strong><br><span>El ranking se llena con favoritos y reseñas de los últimos 7 días.</span></li>';
 
   readerList.innerHTML = activeUsers.length
     ? activeUsers
         .map((user) => `
           <li>
             <strong>@${escapeHtml(user.username)}</strong><br>
-            <span>${escapeHtml(user.nombre)} · ${user.total_resenas} resenas · ${user.total_favoritos} favoritos</span><br>
+            <span>${escapeHtml(user.nombre)} · ${user.total_resenas} reseñas · ${user.total_favoritos} favoritos</span><br>
             <button class="ghost-button" type="button" data-reader="${user.id_usuario}">Ver perfil</button>
           </li>
         `)
         .join('')
-    : '<li><strong>Sin lectores todavia</strong><br><span>Crea usuarios y actividad para llenar esta lista.</span></li>';
+    : '<li><strong>Sin lectores todavía</strong><br><span>Crea usuarios y actividad para llenar esta lista.</span></li>';
 
   renderReaders(activeUsers, 'Crea usuarios y actividad para llenar esta lista.');
 }
 
-function renderReaders(users, emptyText = 'No encontramos lectores con esa busqueda.') {
+function renderReaders(users, emptyText = 'No encontramos lectores con esa búsqueda.') {
   readerList.innerHTML = users.length
     ? users
         .map((user) => `
@@ -1175,7 +1389,7 @@ function renderReaders(users, emptyText = 'No encontramos lectores con esa busqu
           </li>
         `)
         .join('')
-    : `<li><strong>Sin lectores todavia</strong><br><span>${escapeHtml(emptyText)}</span></li>`;
+    : `<li><strong>Sin lectores todavía</strong><br><span>${escapeHtml(emptyText)}</span></li>`;
 }
 
 async function refreshLibrary() {
@@ -1221,7 +1435,7 @@ async function performReaderSearch() {
     renderReaders(result.data || [], query ? 'Prueba con otro usuario o nombre.' : 'Crea usuarios y actividad para llenar esta lista.');
   } catch (error) {
     renderReaders([], 'No se pudo consultar lectores ahora mismo.');
-    showNotice('Revisa que el backend este encendido antes de buscar lectores.', 'error', 'Lectores no disponibles');
+    showNotice('Revisa que el backend esté encendido antes de buscar lectores.', 'error', 'Lectores no disponibles');
   }
 }
 
@@ -1246,20 +1460,20 @@ function renderReaderProfile(profile) {
       </button>
     ` : ''}
     <h3>Le siguen</h3>
-    ${renderPeopleList(followers, 'Todavia no tiene seguidores.')}
+    ${renderPeopleList(followers, 'Todavía no tiene seguidores.')}
     <h3>Sigue a</h3>
-    ${renderPeopleList(following, 'Todavia no sigue a otros lectores.')}
-    <h3>Listas publicas</h3>
+    ${renderPeopleList(following, 'Todavía no sigue a otros lectores.')}
+    <h3>Listas públicas</h3>
     ${lists.length ? lists.map((list) => `
       <div class="list-card">
         <span>${escapeHtml(list.nombre_lista)}</span>
         <strong>${list.books.length} ${list.books.length === 1 ? 'libro' : 'libros'}</strong>
       </div>
-    `).join('') : '<p class="status">Este usuario no tiene listas publicas.</p>'}
+    `).join('') : '<p class="status">Este usuario no tiene listas públicas.</p>'}
     <h3>Lectura reciente</h3>
-    ${reading.length ? reading.map((item) => `<p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>`).join('') : '<p class="status">Sin historial publico.</p>'}
-    <h3>Resenas</h3>
-    ${reviews.length ? reviews.map((review) => `<p><strong>${review.calificacion}/5</strong> ${escapeHtml(review.titulo)}: ${escapeHtml(review.comentario)}</p>`).join('') : '<p class="status">Sin resenas.</p>'}
+    ${reading.length ? reading.map((item) => `<p><strong>${escapeHtml(item.estado_lectura)}</strong> ${escapeHtml(item.titulo)}</p>`).join('') : '<p class="status">Sin historial público.</p>'}
+    <h3>Reseñas</h3>
+    ${reviews.length ? reviews.map((review) => `<p><strong>${review.calificacion}/5</strong> ${escapeHtml(review.titulo)}: ${escapeHtml(review.comentario)}</p>`).join('') : '<p class="status">Sin reseñas.</p>'}
   `;
 }
 
@@ -1291,20 +1505,20 @@ function renderReaderProfileCard(profile) {
         ` : ''}
       </section>
 
-      <section class="profile-stat-row" aria-label="Actividad publica">
+      <section class="profile-stat-row" aria-label="Actividad pública">
         <div><strong>${formatCount(user.followers, 'seguidor', 'seguidores')}</strong><span>Le siguen</span></div>
         <div><strong>${formatCount(user.following, 'siguiendo', 'siguiendo')}</strong><span>Sigue</span></div>
-        <div><strong>${formatCount(lists.length, 'lista', 'listas')}</strong><span>Publicas</span></div>
+        <div><strong>${formatCount(lists.length, 'lista', 'listas')}</strong><span>Públicas</span></div>
       </section>
 
       <section class="reader-section">
-        <h3>Listas publicas</h3>
+        <h3>Listas públicas</h3>
         ${lists.length ? lists.map((list) => `
           <div class="list-card">
             <span>${escapeHtml(list.nombre_lista)}</span>
             <strong>${formatCount(list.books.length, 'libro', 'libros')}</strong>
           </div>
-        `).join('') : '<p class="status">Este lector aun no tiene listas publicas.</p>'}
+        `).join('') : '<p class="status">Este lector aún no tiene listas públicas.</p>'}
       </section>
 
       <section class="reader-section">
@@ -1315,12 +1529,12 @@ function renderReaderProfileCard(profile) {
               <strong>${escapeHtml(item.titulo)}</strong>
               <span class="tag">${escapeHtml(item.estado_lectura)}</span>
             </div>
-          `).join('') : '<p class="status">Sin historial publico por ahora.</p>'}
+          `).join('') : '<p class="status">Sin historial público por ahora.</p>'}
         </div>
       </section>
 
       <section class="reader-section">
-        <h3>Resenas</h3>
+        <h3>Reseñas</h3>
         <div class="reader-book-list">
           ${reviews.length ? reviews.map((review) => `
             <div class="review">
@@ -1328,7 +1542,7 @@ function renderReaderProfileCard(profile) {
               <span>${escapeHtml(review.calificacion)}/5 estrellas</span>
               <p>${escapeHtml(review.comentario)}</p>
             </div>
-          `).join('') : '<p class="status">Todavia no ha publicado resenas.</p>'}
+          `).join('') : '<p class="status">Todavía no ha publicado reseñas.</p>'}
         </div>
       </section>
     </div>
@@ -1361,8 +1575,8 @@ function renderAuthState() {
 
   if (!state.user) {
     profileName.textContent = 'Mi perfil';
-    profileUsername.textContent = 'Inicia sesion para ver tus datos reales.';
-    profileEmail.textContent = 'Sin sesion activa';
+    profileUsername.textContent = 'Inicia sesión para ver tus datos reales.';
+    profileEmail.textContent = 'Sin sesión activa';
     paintAvatar(profileAvatar, null);
     profileSocialCounts.hidden = true;
     logoutButton.hidden = true;
@@ -1373,7 +1587,7 @@ function renderAuthState() {
     profileView.classList.add('locked');
     profileLock.hidden = false;
     profileSummary.innerHTML = '';
-    setProfileStatus('Tu biblioteca se desbloquea cuando inicias sesion.');
+    setProfileStatus('Tu biblioteca se desbloquea cuando inicias sesión.');
     return;
   }
 
@@ -1390,7 +1604,7 @@ function renderAuthState() {
   favoriteAddButton.hidden = false;
   profileView.classList.remove('locked');
   profileLock.hidden = true;
-  setProfileStatus(state.user.biografia || 'Sesion activa. Tu biblioteca esta sincronizada.');
+  setProfileStatus(state.user.biografia || 'Sesión activa. Tu biblioteca está sincronizada.');
 }
 
 async function hydrateUser() {
@@ -1491,12 +1705,12 @@ async function performSearch() {
   if (!query) {
     state.books = [];
     renderBooks();
-    setStatus('Escribe al menos 3 letras para buscar automaticamente.');
+    setStatus('Escribe al menos 3 letras para buscar automáticamente.');
     return;
   }
 
   if (query.length < 3) {
-    setStatus('Escribe al menos 3 letras para iniciar la busqueda.');
+    setStatus('Escribe al menos 3 letras para iniciar la búsqueda.');
     return;
   }
 
@@ -1508,12 +1722,12 @@ async function performSearch() {
     state.books = (result.data || []).map(normalizeBook);
     updateAuthorOptions();
     renderBooks();
-    setStatus('Busqueda lista.');
+    setStatus('Búsqueda lista.');
   } catch (error) {
     state.books = [];
     renderBooks();
-    setStatus('No se pudo conectar con BooksNexus. Revisa que el servicio este encendido.', true);
-    showNotice('Revisa que el backend este encendido en el puerto configurado.', 'error', 'BooksNexus no responde');
+    setStatus('No se pudo conectar con BooksNexus. Revisa que el servicio esté encendido.', true);
+    showNotice('Revisa que el backend esté encendido en el puerto configurado.', 'error', 'BooksNexus no responde');
   } finally {
     button.disabled = false;
   }
@@ -1584,7 +1798,7 @@ grid.addEventListener('click', async (event) => {
 
     detailTitle.textContent = book.title;
     detailBody.innerHTML = '<p class="status">Cargando detalle desde BooksNexus...</p>';
-    detailDialog.showModal();
+    openDialog(detailDialog);
 
     getBookDetail(book.workKey)
       .then((result) => {
@@ -1601,7 +1815,7 @@ grid.addEventListener('click', async (event) => {
         `;
       })
       .catch(() => {
-        detailBody.innerHTML = '<p class="status error">No se pudo cargar el detalle. Revisa que el servicio este encendido.</p>';
+        detailBody.innerHTML = '<p class="status error">No se pudo cargar el detalle. Revisa que el servicio esté encendido.</p>';
       });
 
     return;
@@ -1627,8 +1841,8 @@ grid.addEventListener('click', async (event) => {
   }
 
   if (!state.user || !state.token) {
-    setStatus('Inicia sesion para actualizar tu biblioteca.', true);
-    showNotice('Entra a tu cuenta para guardar favoritos, lecturas, resenas y listas.', 'error', 'Necesitas sesion');
+    setStatus('Inicia sesión para actualizar tu biblioteca.', true);
+    showNotice('Entra a tu cuenta para guardar favoritos, lecturas, reseñas y listas.', 'error', 'Necesitas sesión');
     setActiveView('perfil');
     return;
   }
@@ -1638,23 +1852,39 @@ grid.addEventListener('click', async (event) => {
 
   try {
     if (readingButton) {
-      await markReading(book, 'leyendo');
+      const readingData = await openActionDialog({
+        title: `Actualizar lectura de "${book.title}"`,
+        body: `
+          <p class="dialog-intro">Elige el estado de lectura y registra cuántas páginas llevas.</p>
+          ${renderReadingForm()}
+        `,
+        primaryLabel: 'Guardar lectura',
+      });
+
+      if (!readingData) {
+        return;
+      }
+
+      await markReading(book, {
+        estadoLectura: readingData.estadoLectura,
+        progresoPaginas: normalizeProgressInput(readingData.progresoPaginas),
+      });
       await refreshLibrary();
-      setStatus('Libro marcado como leyendo.');
+      setStatus('Historial de lectura actualizado.');
       showNotice(`"${book.title}" aparece ahora en tu historial.`, 'success', 'Lectura actualizada');
       return;
     }
 
     if (reviewButton) {
       const reviewData = await openActionDialog({
-        title: `Resenar "${book.title}"`,
+        title: `Reseñar "${book.title}"`,
         body: `
           <label>
-            Tu resena
-            <textarea name="comentario" rows="4" placeholder="Que te parecio este libro?" required></textarea>
+            Tu reseña
+            <textarea name="comentario" rows="4" minlength="3" maxlength="1000" placeholder="¿Qué te pareció este libro?" required></textarea>
           </label>
           <label>
-            Calificacion
+            Calificación
             <select name="calificacion" required>
               <option value="5">5 estrellas</option>
               <option value="4">4 estrellas</option>
@@ -1664,19 +1894,19 @@ grid.addEventListener('click', async (event) => {
             </select>
           </label>
         `,
-        primaryLabel: 'Guardar resena',
+        primaryLabel: 'Guardar reseña',
       });
 
       if (!reviewData) {
-        setStatus('Resena cancelada.');
+        setStatus('Reseña cancelada.');
         return;
       }
 
       await saveReview(book, reviewData.comentario, Number(reviewData.calificacion));
       await refreshLibrary();
       await refreshCommunity();
-      setStatus('Resena guardada en tu cuenta.');
-      showNotice(`Tu resena de "${book.title}" ya se ve en comunidad.`, 'success', 'Resena publicada');
+      setStatus('Reseña guardada en tu cuenta.');
+      showNotice(`Tu reseña de "${book.title}" ya se ve en comunidad.`, 'success', 'Reseña publicada');
       return;
     }
 
@@ -1711,9 +1941,9 @@ grid.addEventListener('click', async (event) => {
             </div>
             <label>
               Nombre si vas a crear una nueva
-              <input name="nombreLista" type="text" placeholder="Lecturas para vacaciones" />
+              <input name="nombreLista" type="text" minlength="2" maxlength="100" placeholder="Lecturas para vacaciones" />
             </label>
-            <span class="inline-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Si eliges una lista existente puedes dejar el nombre vacio.</span>
+            <span class="inline-note"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Si eliges una lista existente puedes dejar el nombre vacío.</span>
           `,
           primaryLabel: 'Guardar en lista',
         });
@@ -1739,10 +1969,10 @@ grid.addEventListener('click', async (event) => {
         const listData = await openActionDialog({
           title: `Primera lista para "${book.title}"`,
           body: `
-            <p class="dialog-intro">Aun no tienes listas. Crea una y guardamos el libro ahi mismo.</p>
+            <p class="dialog-intro">Aún no tienes listas. Crea una y guardamos el libro ahí mismo.</p>
             <label>
               Nombre de la lista
-              <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" required />
+              <input name="nombreLista" type="text" minlength="2" maxlength="100" placeholder="Mis próximas lecturas" required />
             </label>
           `,
           primaryLabel: 'Crear y guardar',
@@ -1761,7 +1991,7 @@ grid.addEventListener('click', async (event) => {
       state.library = result.data || state.library;
       renderLibrary();
       setStatus(`Libro agregado a "${list.nombre_lista}".`);
-      showNotice(`"${book.title}" quedo en "${list.nombre_lista}".`, 'success', 'Guardado en lista');
+      showNotice(`"${book.title}" quedó en "${list.nombre_lista}".`, 'success', 'Guardado en lista');
       return;
     }
 
@@ -1771,7 +2001,7 @@ grid.addEventListener('click', async (event) => {
     renderBooks();
     setStatus(state.saved.has(bookId) ? 'Libro guardado en tu cuenta.' : 'Libro quitado de tus favoritos.');
     showNotice(
-      state.saved.has(bookId) ? `"${book.title}" quedo en tus favoritos.` : `"${book.title}" salio de tus favoritos.`,
+      state.saved.has(bookId) ? `"${book.title}" quedó en tus favoritos.` : `"${book.title}" salió de tus favoritos.`,
       'success',
       state.saved.has(bookId) ? 'Favorito guardado' : 'Favorito actualizado'
     );
@@ -1794,23 +2024,23 @@ profileEditButton.addEventListener('click', async () => {
     body: `
       <label>
         Nombre
-        <input name="nombre" type="text" value="${escapeHtml(state.user.nombre || '')}" required />
+        <input name="nombre" type="text" minlength="2" maxlength="100" value="${escapeHtml(state.user.nombre || '')}" required />
       </label>
       <label>
         Usuario
-        <input name="username" type="text" value="${escapeHtml(state.user.username || '')}" required />
+        <input name="username" type="text" minlength="3" maxlength="40" pattern="[a-z0-9_]{3,40}" value="${escapeHtml(state.user.username || '')}" required />
       </label>
       <label>
         Correo
-        <input name="correo" type="email" value="${escapeHtml(state.user.correo || '')}" required />
+        <input name="correo" type="email" maxlength="120" value="${escapeHtml(state.user.correo || '')}" required />
       </label>
       <label>
-        Biografia
-        <textarea name="biografia" rows="4" maxlength="500" placeholder="Cuenta que te gusta leer.">${escapeHtml(state.user.biografia || '')}</textarea>
+        Biografía
+        <textarea name="biografia" rows="4" maxlength="500" placeholder="Cuenta qué te gusta leer.">${escapeHtml(state.user.biografia || '')}</textarea>
       </label>
       <label>
         Avatar URL
-        <input name="avatarUrl" type="url" value="${escapeHtml(state.user.avatar_url || '')}" placeholder="https://..." />
+        <input name="avatarUrl" type="url" maxlength="300" pattern="https?://.+" value="${escapeHtml(state.user.avatar_url || '')}" placeholder="https://..." />
       </label>
     `,
     primaryLabel: 'Guardar perfil',
@@ -1846,9 +2076,9 @@ profileDeleteButton.addEventListener('click', async () => {
   const confirmation = await openActionDialog({
     title: 'Eliminar perfil',
     body: `
-      <p class="status error">Esta accion eliminara tu cuenta, favoritos, lecturas, resenas, listas y seguimientos.</p>
+      <p class="status error">Esta acción eliminará tu cuenta, favoritos, lecturas, reseñas, listas y seguimientos.</p>
       <label>
-        Confirmacion
+        Confirmación
         <select name="confirm" required>
           <option value="">Cancelar</option>
           <option value="delete">Eliminar mi cuenta</option>
@@ -1886,16 +2116,16 @@ listCreateButton.addEventListener('click', async () => {
     body: `
       <label>
         Nombre
-        <input name="nombreLista" type="text" placeholder="Mis proximas lecturas" required />
+        <input name="nombreLista" type="text" minlength="2" maxlength="100" placeholder="Mis próximas lecturas" required />
       </label>
       <label>
-        Descripcion
+        Descripción
         <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional"></textarea>
       </label>
       <label>
         Privacidad
         <select name="privacidad">
-          <option value="publica">Publica</option>
+          <option value="publica">Pública</option>
           <option value="privada">Privada</option>
         </select>
       </label>
@@ -1929,7 +2159,7 @@ favoriteAddButton.addEventListener('click', async () => {
 
   if (!candidates.length) {
     setActiveView('explorar');
-    showNotice('Busca un libro en Explorar y podras guardarlo desde aqui o desde su tarjeta.', 'info', 'Elige un libro');
+    showNotice('Busca un libro en Explorar y podrás guardarlo desde aquí o desde su tarjeta.', 'info', 'Elige un libro');
     return;
   }
 
@@ -1964,7 +2194,7 @@ favoriteAddButton.addEventListener('click', async () => {
     syncSavedFromFavorites(result.data || []);
     renderBooks();
     renderLibrary();
-    showNotice(`"${book.title}" quedo en tus favoritos.`, 'success', 'Favorito guardado');
+    showNotice(`"${book.title}" quedó en tus favoritos.`, 'success', 'Favorito guardado');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo guardar');
   } finally {
@@ -1994,7 +2224,7 @@ profileFavorites.addEventListener('click', async (event) => {
     syncSavedFromFavorites(result.data || []);
     renderBooks();
     renderLibrary();
-    showNotice(`"${favorite.title}" salio de tus favoritos.`, 'success', 'Favoritos actualizados');
+    showNotice(`"${favorite.title}" salió de tus favoritos.`, 'success', 'Favoritos actualizados');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo quitar');
   } finally {
@@ -2016,18 +2246,18 @@ async function openListManager(list) {
         <div class="manager-grid">
           <label>
             Nombre
-            <input name="nombreLista" type="text" value="${escapeHtml(list.nombre_lista || '')}" required />
+            <input name="nombreLista" type="text" minlength="2" maxlength="100" value="${escapeHtml(list.nombre_lista || '')}" required />
           </label>
           <label>
             Privacidad
             <select name="privacidad">
-              <option value="publica" ${list.privacidad === 'publica' ? 'selected' : ''}>Publica</option>
+              <option value="publica" ${list.privacidad === 'publica' ? 'selected' : ''}>Pública</option>
               <option value="privada" ${list.privacidad === 'privada' ? 'selected' : ''}>Privada</option>
             </select>
           </label>
         </div>
         <label>
-          Descripcion
+          Descripción
           <textarea name="descripcion" rows="3" maxlength="500" placeholder="Opcional">${escapeHtml(list.descripcion || '')}</textarea>
         </label>
       </section>
@@ -2035,7 +2265,7 @@ async function openListManager(list) {
       <section class="manager-section">
         <strong>Libros guardados</strong>
         ${books.length ? books.map((book) => {
-          const title = book.title || book.titulo || 'Libro sin titulo';
+          const title = book.title || book.titulo || 'Libro sin título';
           const workKey = book.openLibraryKey || book.openlibrary_key || '';
 
           return `
@@ -2052,12 +2282,12 @@ async function openListManager(list) {
               </span>
             </label>
           `;
-        }).join('') : '<p class="status compact-status">Sin libros todavia.</p>'}
+        }).join('') : '<p class="status compact-status">Sin libros todavía.</p>'}
       </section>
 
       <div class="manager-section">
         <strong>Agregar libro</strong>
-        <p class="dialog-intro">Puedes agregar cualquiera de tus favoritos que todavia no este en esta lista.</p>
+        <p class="dialog-intro">Puedes agregar cualquiera de tus favoritos que todavía no esté en esta lista.</p>
         <label>
           Desde favoritos
           <select name="addFavoriteKey">
@@ -2128,6 +2358,77 @@ profileLists.addEventListener('click', async (event) => {
   await openListManager(list);
 });
 
+profileReading.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-reading-edit]');
+  const deleteButton = event.target.closest('[data-reading-delete]');
+
+  if (!editButton && !deleteButton) {
+    return;
+  }
+
+  const idHistorial = String(editButton?.dataset.readingEdit || deleteButton?.dataset.readingDelete || '');
+  const reading = findReadingByIdentifier(idHistorial);
+
+  if (!reading) {
+    return;
+  }
+
+  if (editButton) {
+    const readingData = await openActionDialog({
+      title: `Editar lectura de "${reading.titulo}"`,
+      body: renderReadingForm(reading),
+      primaryLabel: 'Guardar lectura',
+    });
+
+    if (!readingData) {
+      return;
+    }
+
+    editButton.disabled = true;
+
+    try {
+      const result = await updateReading(idHistorial, {
+        estadoLectura: readingData.estadoLectura,
+        progresoPaginas: normalizeProgressInput(readingData.progresoPaginas),
+      });
+      state.library = result.data || state.library;
+      renderLibrary();
+      await refreshCommunity();
+      showNotice('Tu historial de lectura se actualizó.', 'success', 'Lectura guardada');
+    } catch (error) {
+      showNotice(translateError(error.message), 'error', 'No se pudo guardar');
+    } finally {
+      editButton.disabled = false;
+    }
+
+    return;
+  }
+
+  const confirmation = await openActionDialog({
+    title: 'Eliminar lectura',
+    body: `<p class="status error">Se eliminará "${escapeHtml(reading.titulo)}" de tu historial.</p>`,
+    primaryLabel: 'Eliminar lectura',
+  });
+
+  if (!confirmation) {
+    return;
+  }
+
+  deleteButton.disabled = true;
+
+  try {
+    const result = await deleteReading(idHistorial);
+    state.library = result.data || state.library;
+    renderLibrary();
+    await refreshCommunity();
+    showNotice('La lectura fue eliminada de tu historial.', 'success', 'Lectura eliminada');
+  } catch (error) {
+    showNotice(translateError(error.message), 'error', 'No se pudo eliminar');
+  } finally {
+    deleteButton.disabled = false;
+  }
+});
+
 profileReviews.addEventListener('click', async (event) => {
   const editButton = event.target.closest('[data-review-edit]');
   const deleteButton = event.target.closest('[data-review-delete]');
@@ -2145,20 +2446,20 @@ profileReviews.addEventListener('click', async (event) => {
 
   if (editButton) {
     const reviewData = await openActionDialog({
-      title: `Editar resena de "${review.titulo}"`,
+      title: `Editar reseña de "${review.titulo}"`,
       body: `
         <label>
-          Tu resena
-          <textarea name="comentario" rows="4" required>${escapeHtml(review.comentario || '')}</textarea>
+          Tu reseña
+          <textarea name="comentario" rows="4" minlength="3" maxlength="1000" required>${escapeHtml(review.comentario || '')}</textarea>
         </label>
         <label>
-          Calificacion
+          Calificación
           <select name="calificacion" required>
             ${[5, 4, 3, 2, 1].map((value) => `<option value="${value}" ${Number(review.calificacion) === value ? 'selected' : ''}>${value} estrellas</option>`).join('')}
           </select>
         </label>
       `,
-      primaryLabel: 'Guardar resena',
+      primaryLabel: 'Guardar reseña',
     });
 
     if (!reviewData) {
@@ -2175,7 +2476,7 @@ profileReviews.addEventListener('click', async (event) => {
       state.library = result.data || state.library;
       renderLibrary();
       await refreshCommunity();
-      showNotice('Tu resena se actualizo.', 'success', 'Resena guardada');
+      showNotice('Tu reseña se actualizó.', 'success', 'Reseña guardada');
     } catch (error) {
       showNotice(translateError(error.message), 'error', 'No se pudo guardar');
     } finally {
@@ -2186,9 +2487,9 @@ profileReviews.addEventListener('click', async (event) => {
   }
 
   const confirmation = await openActionDialog({
-    title: 'Eliminar resena',
-    body: `<p class="status error">Se eliminara tu resena de "${escapeHtml(review.titulo)}".</p>`,
-    primaryLabel: 'Eliminar resena',
+    title: 'Eliminar reseña',
+    body: `<p class="status error">Se eliminará tu reseña de "${escapeHtml(review.titulo)}".</p>`,
+    primaryLabel: 'Eliminar reseña',
   });
 
   if (!confirmation) {
@@ -2202,7 +2503,7 @@ profileReviews.addEventListener('click', async (event) => {
     state.library = result.data || state.library;
     renderLibrary();
     await refreshCommunity();
-    showNotice('La resena fue eliminada.', 'success', 'Resena eliminada');
+    showNotice('La reseña fue eliminada.', 'success', 'Reseña eliminada');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo eliminar');
   } finally {
@@ -2222,26 +2523,26 @@ communityReviews.addEventListener('click', async (event) => {
   const review = (state.library.reviews || []).find((item) => Number(item.id_resena) === idResena);
 
   if (!review) {
-    showNotice('Abre tu perfil para sincronizar tus resenas antes de editarlas.', 'error', 'Resena no disponible');
+    showNotice('Abre tu perfil para sincronizar tus reseñas antes de editarlas.', 'error', 'Reseña no disponible');
     return;
   }
 
   if (editButton) {
     const reviewData = await openActionDialog({
-      title: `Editar resena de "${review.titulo}"`,
+      title: `Editar reseña de "${review.titulo}"`,
       body: `
         <label>
-          Tu resena
-          <textarea name="comentario" rows="4" required>${escapeHtml(review.comentario || '')}</textarea>
+          Tu reseña
+          <textarea name="comentario" rows="4" minlength="3" maxlength="1000" required>${escapeHtml(review.comentario || '')}</textarea>
         </label>
         <label>
-          Calificacion
+          Calificación
           <select name="calificacion" required>
             ${[5, 4, 3, 2, 1].map((value) => `<option value="${value}" ${Number(review.calificacion) === value ? 'selected' : ''}>${value} estrellas</option>`).join('')}
           </select>
         </label>
       `,
-      primaryLabel: 'Guardar resena',
+      primaryLabel: 'Guardar reseña',
     });
 
     if (!reviewData) {
@@ -2256,7 +2557,7 @@ communityReviews.addEventListener('click', async (event) => {
       state.library = result.data || state.library;
       renderLibrary();
       await refreshCommunity();
-      showNotice('Tu resena se actualizo tambien en comunidad.', 'success', 'Resena guardada');
+      showNotice('Tu reseña se actualizó también en comunidad.', 'success', 'Reseña guardada');
     } catch (error) {
       showNotice(translateError(error.message), 'error', 'No se pudo guardar');
     }
@@ -2265,9 +2566,9 @@ communityReviews.addEventListener('click', async (event) => {
   }
 
   const confirmation = await openActionDialog({
-    title: 'Eliminar resena',
-    body: `<p class="status error">Se eliminara tu resena de "${escapeHtml(review.titulo)}" tambien de comunidad.</p>`,
-    primaryLabel: 'Eliminar resena',
+    title: 'Eliminar reseña',
+    body: `<p class="status error">Se eliminará tu reseña de "${escapeHtml(review.titulo)}" también de comunidad.</p>`,
+    primaryLabel: 'Eliminar reseña',
   });
 
   if (!confirmation) {
@@ -2279,7 +2580,7 @@ communityReviews.addEventListener('click', async (event) => {
     state.library = result.data || state.library;
     renderLibrary();
     await refreshCommunity();
-    showNotice('La resena fue eliminada de comunidad.', 'success', 'Resena eliminada');
+    showNotice('La reseña fue eliminada de comunidad.', 'success', 'Reseña eliminada');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo eliminar');
   }
@@ -2291,12 +2592,24 @@ actionForm.addEventListener('submit', (event) => {
   const values = {};
 
   formData.forEach((value, key) => {
+    const field = actionForm.elements[key];
+    const maxLength = Number(field?.getAttribute?.('maxlength')) || 500;
+    let cleanValue = value;
+
+    if (typeof value === 'string') {
+      cleanValue = key === 'username'
+        ? sanitizeUsername(value)
+        : key === 'avatarUrl'
+          ? sanitizeUrl(value)
+          : stripUnsafeText(value, maxLength);
+    }
+
     if (key in values) {
-      values[key] = Array.isArray(values[key]) ? [...values[key], value] : [values[key], value];
+      values[key] = Array.isArray(values[key]) ? [...values[key], cleanValue] : [values[key], cleanValue];
       return;
     }
 
-    values[key] = value;
+    values[key] = cleanValue;
   });
   closeActionDialog(values);
 });
@@ -2306,6 +2619,10 @@ actionSecondary.addEventListener('click', () => closeActionDialog(null));
 actionDialog.addEventListener('cancel', (event) => {
   event.preventDefault();
   closeActionDialog(null);
+});
+
+themeToggle?.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 });
 
 logoutButton.addEventListener('click', () => {
@@ -2324,7 +2641,7 @@ readerList.addEventListener('click', async (event) => {
 
   try {
     readerBody.innerHTML = '<p class="status">Cargando perfil...</p>';
-    readerDialog.showModal();
+    openDialog(readerDialog);
     const profile = await getReaderProfile(button.dataset.reader);
     renderReaderProfileCard(profile);
   } catch (error) {
@@ -2381,7 +2698,7 @@ readerBody.addEventListener('click', async (event) => {
     }
 
     await refreshCommunity();
-    showNotice('Tu red de lectores se actualizo correctamente.', 'success', 'Seguimiento actualizado');
+    showNotice('Tu red de lectores se actualizó correctamente.', 'success', 'Seguimiento actualizado');
   } catch (error) {
     showNotice(translateError(error.message), 'error', 'No se pudo actualizar');
   } finally {
@@ -2390,6 +2707,7 @@ readerBody.addEventListener('click', async (event) => {
 });
 
 bindNavigation();
+applyFieldGuards();
 initializeViewFromHash();
 refreshAuthors();
 hydrateUser();

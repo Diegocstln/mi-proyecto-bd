@@ -1,4 +1,4 @@
-const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
+const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'https://booksnexus-back.onrender.com';
 
 let mode = 'login';
 

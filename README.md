@@ -22,7 +22,7 @@ Abre `index.html` en el navegador o sirve la carpeta con cualquier servidor esta
 La URL del backend se configura en `config.js`:
 
 ```js
-window.BOOKSNEXUS_API_BASE_URL = 'http://localhost:3000';
+window.BOOKSNEXUS_API_BASE_URL = 'https://booksnexus-back.onrender.com';
 ```
 
 Cuando el backend este desplegado, cambia ese valor por la URL publica de la API.

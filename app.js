@@ -1,4 +1,4 @@
-const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'http://localhost:3000';
+const apiBaseUrl = 'https://booksnexus-back.onrender.com/';
 const MAX_READING_PAGES = 5000;
 
 const state = {

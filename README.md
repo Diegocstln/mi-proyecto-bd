@@ -60,12 +60,12 @@ El proyecto surge de la necesidad de ofrecer un espacio donde los lectores pueda
 
 La base de datos fue diseñada utilizando el modelo Entidad-Relación y posteriormente transformada a un esquema relacional en PostgreSQL.
 <details>
-<summary>🖼️ Modelo ERR Y EXTENDIDO</summary>
+<summary>🖼️ Modelo ERR Y RELACIONAL</summary>
 
 | | |
 |---|---|
-| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="auto"/> | |
-| <img loading = "lazy" width="auto" src="https://github.com/user-attachments/assets/a23f5224-c830-419d-990c-65331520df5f" /> | |
+| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | |
+| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | |
 
 </details>
 

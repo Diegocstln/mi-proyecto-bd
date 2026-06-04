@@ -64,9 +64,9 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 
 | |
 |---|
+| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> |
 | <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | 
-| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | 
-
+ 
 </details>
 
 ### Entidades principales
@@ -93,10 +93,11 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 
 ## Tecnologías Utilizadas
 
-* **Backend:** FastAPI
-* **Base de Datos:** PostgreSQL
-* **ORM:** SQLAlchemy
+* **Backend:** Node.js con Express.js
+* **Base de Datos:** PostgreSQL (Supabase)
+* **Frontend: HTML:** CSS y JavaScript vanilla (Fetch API)
 * **API Externa:** Open Library API
+* **Despliegue:** Render y GitHub pages
 
 ## Resultados Esperados
 

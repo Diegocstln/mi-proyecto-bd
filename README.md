@@ -64,8 +64,8 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 
 | |
 |---|
-| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="400"/> | 
-| <img loading = "lazy" width="400" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | 
+| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | 
+| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | 
 
 </details>
 
@@ -101,4 +101,9 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 ## Resultados Esperados
 
 BooksNexus proporciona una solución integral para la gestión de lecturas y la interacción entre lectores, permitiendo mantener un historial organizado, compartir experiencias de lectura y descubrir nuevos libros mediante recomendaciones personalizadas.
+
+## Enlace a repositorio central
+https://github.com/gabrielhuav/DB-Coursework-2026-2
+
+
 

@@ -62,10 +62,10 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 <details>
 <summary>🖼️ Modelo ERR Y RELACIONAL</summary>
 
-| | |
-|---|---|
-| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | |
-| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | |
+| |
+|---|
+| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="400"/> | 
+| <img loading = "lazy" width="400" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> | 
 
 </details>
 

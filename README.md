@@ -27,14 +27,19 @@ window.BOOKSNEXUS_API_BASE_URL = 'https://booksnexus-back.onrender.com';
 
 Cuando el backend este desplegado, cambia ese valor por la URL publica de la API.
 
-# 📚 Documentación
+# 📚 Documentación BOOKSNEXUS
+---
+## Descripción de la problematica
 
-## Descripción del Proyecto
+Actualmente, existen múltiples plataformas para consultar información sobre libros, pero pocas permiten integrar la búsqueda de libros con una experiencia social entre lectores. Los usuarios pueden ver información básica de los libros, pero no pueden interactuar, compartir opiniones ni organizar sus lecturas de forma estructurada.
+
+Esto provoca que muchos lectores gestionen sus libros leídos, pendientes o favoritos de manera desorganizada, utilizando notas, aplicaciones externas o redes sociales no especializadas, dificultando el seguimiento de su historial de lectura y la obtención de recomendaciones personalizadas.
+
+Por esta razón surge la necesidad de una plataforma tipo red social de libros, donde los usuarios puedan buscar libros mediante la API de Open Library, registrar reseñas, calificar libros, crear listas personalizadas, guardar favoritos y llevar un historial de lectura organizado.
 
 **BooksNexus** es una plataforma tipo red social orientada a lectores que combina la consulta de información bibliográfica con la interacción social entre usuarios. A diferencia de las aplicaciones tradicionales de gestión de libros, permite buscar obras mediante la API de Open Library, registrar reseñas y calificaciones, crear listas personalizadas, administrar favoritos y llevar un historial detallado de lectura.
 
-El proyecto surge de la necesidad de ofrecer un espacio donde los lectores puedan organizar sus libros, compartir opiniones y descubrir nuevas lecturas a través de recomendaciones y la actividad de otros usuarios.
-
+---
 ## Objetivos
 
 * Centralizar la gestión de información de libros y lectores.
@@ -42,7 +47,43 @@ El proyecto surge de la necesidad de ofrecer un espacio donde los lectores pueda
 * Permitir la creación de listas personalizadas y favoritos.
 * Llevar un control del progreso y estado de lectura de cada libro.
 * Generar recomendaciones y estadísticas basadas en la actividad de los usuarios.
+---
 
+## 🗣️ Entrevista simulada (requerimientos)
+
+**Consultor:** ¿Qué funcionalidades considera importantes para la plataforma?  
+**Cliente:** Que los usuarios puedan buscar libros usando Open Library y guardarlos en su perfil.
+
+**Consultor:** ¿Qué información debe almacenarse de los libros?  
+**Cliente:** Título, autor, descripción, ISBN, fecha de publicación, portada y categorías.
+
+**Consultor:** ¿Los usuarios interactuarán entre sí?  
+**Cliente:** Sí, queremos una red social donde puedan seguirse, ver reseñas y descubrir libros.
+
+**Consultor:** ¿Qué acciones puede hacer un usuario sobre un libro?  
+**Cliente:** Calificar, reseñar, agregar a favoritos y crear listas como “Por leer” o “Favoritos”.
+
+**Consultor:** ¿Se llevará control de lectura?  
+**Cliente:** Sí, con estados como pendiente, leyendo o terminado.
+
+**Consultor:** ¿Qué reportes se necesitan?  
+**Cliente:** Libros mejor calificados, más populares, estadísticas de usuario y recomendaciones.
+
+---
+## 📋 Requerimientos del sistema
+
+### 🗂️ Requerimientos de datos
+- Usuarios registrados
+- Libros desde Open Library
+- Autores y categorías
+- Reseñas y calificaciones
+- Listas personalizadas
+- Favoritos
+- Historial de lectura
+- Relaciones entre usuarios (seguimiento)
+- Estadísticas de libros (promedio y número de reseñas)
+
+---
 ## Funcionalidades Principales
 
 * Registro e inicio de sesión de usuarios.
@@ -64,8 +105,9 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 
 | |
 |---|
-| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> |
 | <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | 
+| <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> |
+
  
 </details>
 

@@ -13,9 +13,11 @@
 
   /* ─── Configuración ─────────────────────────────────────── */
   const API = window.BOOKSNEXUS_API_BASE_URL || 'https://booksnexus-back.onrender.com';
+  const ADMIN_PASSWORD = 'booksnexus2026'; // ← cambia esto cuando quieras
+  let adminAuthenticated = false;           // solo vive en memoria de sesión
   let adminActive = false;
-  let adminIdCounter = 9000; // IDs falsos empiezan desde aquí
-  let currentSection = 'usuarios';
+  let adminIdCounter = 9000;
+  let currentSection = 'inicio';
 
   /* ─── Estado local en memoria (de chocolate 🍫) ─────────── */
   const store = {
@@ -670,15 +672,287 @@
     });
   }
 
+  /* ─── Login de administrador ────────────────────────────── */
+  function showLoginModal() {
+    if (document.getElementById('admin-login-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'admin-login-modal';
+    modal.innerHTML = `
+      <div class="adm-login-bg" aria-hidden="true"></div>
+      <div class="adm-login-card" role="dialog" aria-modal="true" aria-labelledby="adm-login-title">
+        <div class="adm-login-icon">
+          <i class="fa-solid fa-lock" id="adm-lock-icon"></i>
+        </div>
+        <h2 id="adm-login-title">Panel de administración</h2>
+        <p>Introduce la contraseña para continuar.</p>
+
+        <form id="adm-login-form" autocomplete="off">
+          <div class="adm-login-field">
+            <input
+              id="adm-login-input"
+              type="password"
+              placeholder="Contraseña"
+              maxlength="100"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" id="adm-toggle-pw" aria-label="Mostrar contraseña" tabindex="-1">
+              <i class="fa-solid fa-eye" id="adm-eye-icon"></i>
+            </button>
+          </div>
+          <p class="adm-login-error" id="adm-login-error" hidden>Contraseña incorrecta. Intenta de nuevo.</p>
+          <button class="adm-login-btn" type="submit" id="adm-login-submit">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Acceder al panel
+          </button>
+        </form>
+
+        <button class="adm-login-cancel" type="button" id="adm-login-cancel">
+          Cancelar
+        </button>
+      </div>
+    `;
+
+    // Inyectar estilos de login
+    if (!document.getElementById('admin-login-styles')) {
+      const s = document.createElement('style');
+      s.id = 'admin-login-styles';
+      s.textContent = getLoginStyles();
+      document.head.appendChild(s);
+    }
+
+    document.body.appendChild(modal);
+
+    const input   = modal.querySelector('#adm-login-input');
+    const form    = modal.querySelector('#adm-login-form');
+    const errMsg  = modal.querySelector('#adm-login-error');
+    const cancelBtn = modal.querySelector('#adm-login-cancel');
+    const togglePw  = modal.querySelector('#adm-toggle-pw');
+    const eyeIcon   = modal.querySelector('#adm-eye-icon');
+    const lockIcon  = modal.querySelector('#adm-lock-icon');
+    const submitBtn = modal.querySelector('#adm-login-submit');
+
+    // Foco automático
+    setTimeout(() => input.focus(), 80);
+
+    // Mostrar/ocultar contraseña
+    togglePw.addEventListener('click', () => {
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      eyeIcon.className = `fa-solid ${isPw ? 'fa-eye-slash' : 'fa-eye'}`;
+    });
+
+    // Submit
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const value = input.value;
+
+      if (value === ADMIN_PASSWORD) {
+        // Animación de desbloqueo
+        adminAuthenticated = true;
+        lockIcon.className = 'fa-solid fa-lock-open';
+        modal.querySelector('.adm-login-card').classList.add('adm-login-success');
+        submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Acceso concedido';
+        submitBtn.disabled = true;
+
+        setTimeout(() => {
+          modal.remove();
+          openPanel();
+        }, 700);
+      } else {
+        // Animación de error (shake)
+        modal.querySelector('.adm-login-card').classList.add('adm-shake');
+        errMsg.hidden = false;
+        input.value = '';
+        input.focus();
+        setTimeout(() => modal.querySelector('.adm-login-card').classList.remove('adm-shake'), 500);
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => modal.remove());
+    modal.querySelector('.adm-login-bg').addEventListener('click', () => modal.remove());
+  }
+
+  function getLoginStyles() {
+    return `
+      #admin-login-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      }
+
+      .adm-login-bg {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        animation: adm-fade-in 0.25s ease;
+      }
+
+      .adm-login-card {
+        position: relative;
+        z-index: 1;
+        background: #13151d;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 40px 36px 32px;
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+        box-shadow: 0 32px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(192,132,252,0.08);
+        animation: adm-slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        color: #e2e8f0;
+      }
+
+      .adm-login-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(147,51,234,0.2), rgba(99,102,241,0.15));
+        border: 1px solid rgba(192,132,252,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 26px;
+        color: #c084fc;
+        transition: all 0.4s ease;
+      }
+
+      .adm-login-success .adm-login-icon {
+        background: linear-gradient(135deg, rgba(52,211,153,0.2), rgba(16,185,129,0.15));
+        border-color: rgba(52,211,153,0.4);
+        color: #34d399;
+        transform: scale(1.1);
+        box-shadow: 0 0 30px rgba(52,211,153,0.3);
+      }
+
+      .adm-login-card h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #f1f5f9;
+      }
+
+      .adm-login-card > p {
+        margin: 0 0 28px;
+        font-size: 13px;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      .adm-login-field {
+        position: relative;
+        margin-bottom: 10px;
+      }
+
+      #adm-login-input {
+        width: 100%;
+        background: #1e2230;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 10px;
+        color: #e2e8f0;
+        font-size: 15px;
+        padding: 13px 46px 13px 16px;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        font-family: inherit;
+        letter-spacing: 0.05em;
+      }
+      #adm-login-input:focus {
+        border-color: #9333ea;
+        box-shadow: 0 0 0 3px rgba(147,51,234,0.15);
+      }
+
+      #adm-toggle-pw {
+        all: unset;
+        cursor: pointer;
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #475569;
+        font-size: 15px;
+        transition: color 0.15s;
+      }
+      #adm-toggle-pw:hover { color: #94a3b8; }
+
+      .adm-login-error {
+        margin: 0 0 14px;
+        font-size: 12px;
+        color: #f87171;
+        animation: adm-fade-in 0.2s ease;
+      }
+
+      .adm-login-btn {
+        all: unset;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 13px;
+        background: linear-gradient(135deg, #9333ea, #6366f1);
+        color: white;
+        font-size: 14px;
+        font-weight: 700;
+        border-radius: 10px;
+        transition: all 0.2s;
+        box-shadow: 0 4px 20px rgba(147,51,234,0.35);
+        margin-bottom: 14px;
+      }
+      .adm-login-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(147,51,234,0.45); }
+      .adm-login-btn:disabled { opacity: 0.7; cursor: default; }
+
+      .adm-login-cancel {
+        all: unset;
+        cursor: pointer;
+        font-size: 13px;
+        color: #475569;
+        transition: color 0.15s;
+      }
+      .adm-login-cancel:hover { color: #94a3b8; }
+
+      @keyframes adm-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes adm-slide-up { from { opacity: 0; transform: scale(0.92) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      @keyframes adm-shake {
+        0%,100% { transform: translateX(0); }
+        20%      { transform: translateX(-8px); }
+        40%      { transform: translateX(8px); }
+        60%      { transform: translateX(-6px); }
+        80%      { transform: translateX(6px); }
+      }
+      .adm-shake { animation: adm-shake 0.45s ease; }
+    `;
+  }
+
   /* ─── Activar / desactivar panel ────────────────────────── */
-  function open() {
+  function openPanel() {
     if (adminActive) return;
     adminActive = true;
     buildPanel();
     document.body.classList.add('admin-open');
     renderHome();
-    // Lazy-load datos al primera navegación
     toast('Panel abierto 🍫 Ctrl+Shift+A para cerrar', 'chocolate');
+  }
+
+  function open() {
+    if (adminActive) return;
+    if (adminAuthenticated) {
+      openPanel();
+    } else {
+      showLoginModal();
+    }
   }
 
   function close() {

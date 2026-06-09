@@ -105,8 +105,8 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 
 | |
 |---|
-| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | 
 | <img loading = "lazy" width="800" src= "https://github.com/user-attachments/assets/73a56bd1-f394-4fb7-ad19-557c7d01933a" /> |
+| <img loading="lazy" src="https://github.com/user-attachments/assets/30b1f2d7-19cf-4f52-800e-8856b40f06a6" width="800"/> | 
 
  
 </details>
@@ -132,6 +132,144 @@ La base de datos fue diseñada utilizando el modelo Entidad-Relación y posterio
 * Usuario ↔ Libro mediante Favoritos
 * Lista ↔ Libro (N:M)
 * Usuario ↔ Usuario mediante Seguimiento (N:M)
+## Modelo EER (Entidad-Relación Extendido)
+
+Durante la segunda etapa del diseño se amplió el modelo E-R tradicional utilizando conceptos avanzados del Modelo Entidad-Relación Extendido (EER).
+
+### Mejoras incorporadas
+
+* Cardinalidades mínimas y máximas para representar reglas de negocio específicas.
+* Identificación de entidades con dependencia de existencia.
+* Especialización de usuarios mediante herencia.
+* Restricciones de participación total y parcial.
+* Representación más precisa de las relaciones entre entidades.
+
+### Jerarquía de especialización
+
+La entidad **Usuario** fue modelada como supertipo y se especializó en:
+
+#### Administrador
+
+Encargado de la gestión general de la plataforma.
+
+#### Lector
+
+Representa a los usuarios que interactúan con los libros y la comunidad.
+
+Atributos específicos:
+
+La especialización fue definida como:
+
+* **Disjunta (d):** un usuario solo puede pertenecer a un subtipo.
+* **Parcial (p):** pueden existir usuarios sin pertenecer a un subtipo específico.
+
+---
+
+## Transformación al Modelo Relacional
+
+A partir del modelo EER se realizó la transformación al modelo relacional, definiendo las tablas, claves primarias y claves foráneas necesarias para la implementación física de la base de datos.
+
+### Tablas principales
+
+* usuario
+* libro
+* autor
+* categoria
+* lista
+
+### Tablas asociativas
+
+* resena
+* historial_lectura
+* favorito
+
+### Tablas para relaciones N:M
+
+* libro_autor
+* libro_categoria
+* lista_libro
+* seguimiento
+
+### Características del modelo relacional
+
+* Integridad referencial mediante claves foráneas.
+* Restricciones de unicidad para evitar duplicados.
+* Relaciones uno a muchos y muchos a muchos correctamente normalizadas.
+* Preparación para implementación física en PostgreSQL.
+
+---
+
+### Características implementadas
+
+#### Restricciones de dominio
+
+* NOT NULL
+* UNIQUE
+* DEFAULT
+* CHECK
+
+#### Integridad referencial
+
+Se implementaron claves foráneas con acciones referenciales utilizando:
+
+```sql
+ON DELETE CASCADE
+ON UPDATE CASCADE
+```
+
+para mantener la consistencia de la información.
+
+#### Índices
+
+Se crearon índices para optimizar consultas frecuentes:
+
+* idx_libro_titulo
+* idx_resena_libro
+* idx_historial_usuario
+* idx_lista_usuario
+* idx_seguimiento_seguido
+
+---
+
+## Seguridad y Control de Acceso
+
+Se diseñó una estrategia de seguridad basada en roles.
+
+### Roles definidos
+
+| Rol                | Descripción                        |
+| ------------------ | ---------------------------------- |
+| Administrador      | Control total del sistema          |
+| Usuario Registrado | Administración de contenido propio |
+| Invitado           | Consulta de información pública    |
+
+### Matriz de permisos
+
+| Rol                | SELECT | INSERT | UPDATE | DELETE |
+| ------------------ | ------ | ------ | ------ | ------ |
+| Administrador      | ✅      | ✅      | ✅      | ✅      |
+| Usuario Registrado | ✅      | ✅      | ✅      | ❌      |
+| Invitado           | ✅      | ❌      | ❌      | ❌      |
+
+---
+
+## Validación e Integridad de Datos
+
+Se realizaron pruebas para verificar el correcto funcionamiento de las restricciones y relaciones de la base de datos.
+
+### Casos evaluados
+
+* Inserción de calificaciones fuera del rango permitido.
+* Inserción de correos duplicados.
+* Estados de lectura inválidos.
+* Eliminación de registros relacionados mediante CASCADE.
+* Restricciones de seguimiento entre usuarios.
+* Verificación de claves foráneas.
+* Validación de permisos por rol.
+
+Estas pruebas permitieron garantizar la consistencia, seguridad e integridad de la información almacenada en BooksNexus.
+
+---
 
 ## Tecnologías Utilizadas
 

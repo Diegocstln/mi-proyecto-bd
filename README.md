@@ -1,13 +1,17 @@
-# BooksNexus Local
+# BooksNexus
 
-Frontend estatico/demo de BooksNexus en `Diegocstln/mi-proyecto-bd`, rama `erik`.
+Frontend estatico de BooksNexus publicado desde `Diegocstln/mi-proyecto-bd`, rama `erik`.
 
-La pagina conserva los archivos visuales originales y usa `local-api.js` para responder localmente las rutas del backend. En esta version demo los datos se guardan en el navegador con `localStorage`.
+La pagina se sirve con GitHub Pages y consume el backend real desplegado en Render mediante `config.js`:
+
+```js
+window.BOOKSNEXUS_API_BASE_URL = 'https://booksnexus-back.onrender.com';
+```
 
 ## Links desplegados
 
-- Frontend demo: https://diegocstln.github.io/mi-proyecto-bd/
-- Backend Render: https://booksnexus-back.onrender.com
+- Frontend en GitHub Pages: https://diegocstln.github.io/mi-proyecto-bd/
+- Backend/API en Render: https://booksnexus-back.onrender.com
 - Health check del backend: https://booksnexus-back.onrender.com/api/health
 
 ## GitHub Pages
@@ -20,7 +24,13 @@ Branch: erik
 Folder: /root
 ```
 
-No requiere build ni dependencias de Node; `index.html`, `styles.css`, `app.js`, `admin.js`, `config.js`, `local-api.js` y `src/assets` se sirven directamente desde la rama.
+No requiere build ni dependencias de Node; `index.html`, `styles.css`, `app.js`, `admin.js`, `config.js` y `src/assets` se sirven directamente desde la rama.
+
+## Backend y datos
+
+Los datos de usuarios, listas, favoritos y comunidad deben venir del backend de Render. Render debe tener configurada la misma `DATABASE_URL` de Supabase/Postgres que se quiera usar como base real.
+
+El archivo `local-api.js` queda en el repositorio solo como respaldo para pruebas locales antiguas, pero no se carga en el HTML publicado.
 
 ## Abrir localmente
 
@@ -30,20 +40,4 @@ Usa:
 http://127.0.0.1:8765/index.html
 ```
 
-O abre `index.html` desde esta carpeta.
-
-## Donde se guardan los datos
-
-Los datos se guardan en el navegador, en `localStorage`, bajo estas claves:
-
-- `booksnexus_local_backend_v2`: base local principal.
-- `booksnexus_token`: sesion local.
-- `booksnexus_user`: usuario activo.
-- `booksnexus_saved`: favoritos marcados para la interfaz original.
-- `booksnexus_theme`: tema claro/oscuro.
-
-Si existia la base anterior `booksnexus.local.v1` en este mismo origen local, `local-api.js` la migra automaticamente.
-
-## Limitacion del navegador
-
-Un sitio en `127.0.0.1`, GitHub Pages o Render no puede leer automaticamente el `localStorage` que haya quedado guardado en otro origen, porque el navegador separa los datos por dominio. Para mover datos desde otro origen hay que exportarlos/importarlos manualmente.
+O abre `index.html` desde esta carpeta. Para que use datos reales, conserva `config.js` apuntando a `https://booksnexus-back.onrender.com` y no cargues `local-api.js`.

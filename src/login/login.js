@@ -1,4 +1,5 @@
 const apiBaseUrl = window.BOOKSNEXUS_API_BASE_URL || 'https://booksnexus-back.onrender.com';
+const isLocalMode = window.BOOKSNEXUS_LOCAL_MODE || new URLSearchParams(window.location.search).get('mode') === 'local';
 
 let mode = 'login';
 
@@ -181,7 +182,7 @@ form.addEventListener('submit', async (event) => {
     localStorage.setItem('booksnexus_user', JSON.stringify(result.user));
     setStatus('Sesión lista. Abriendo tu perfil...');
     showNotice('Te llevamos directo a tu perfil sincronizado.', 'success', 'Sesión iniciada');
-    window.location.href = '../../index.html#view-perfil';
+    window.location.href = `../../index.html${isLocalMode ? '?mode=local' : ''}#view-perfil`;
   } catch (error) {
     const message = translateError(error.message) || 'No se pudo conectar con BooksNexus.';
     setStatus(message, true);

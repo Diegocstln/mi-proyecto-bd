@@ -1,10 +1,28 @@
 # BooksNexus Local
 
-Copia local del frontend `Diegocstln/mi-proyecto-bd`.
+Frontend estatico/demo de BooksNexus en `Diegocstln/mi-proyecto-bd`, rama `erik`.
 
-No modifica GitHub, Supabase, Render ni PostgreSQL. La pagina conserva los archivos visuales originales y usa `local-api.js` para responder localmente las rutas del backend.
+La pagina conserva los archivos visuales originales y usa `local-api.js` para responder localmente las rutas del backend. En esta version demo los datos se guardan en el navegador con `localStorage`.
 
-## Abrir
+## Links desplegados
+
+- Frontend demo: https://diegocstln.github.io/mi-proyecto-bd/
+- Backend Render: https://booksnexus-back.onrender.com
+- Health check del backend: https://booksnexus-back.onrender.com/api/health
+
+## GitHub Pages
+
+Este frontend esta preparado para publicarse desde GitHub Pages con esta configuracion:
+
+```txt
+Source: Deploy from a branch
+Branch: erik
+Folder: /root
+```
+
+No requiere build ni dependencias de Node; `index.html`, `styles.css`, `app.js`, `admin.js`, `config.js`, `local-api.js` y `src/assets` se sirven directamente desde la rama.
+
+## Abrir localmente
 
 Usa:
 
@@ -28,4 +46,4 @@ Si existia la base anterior `booksnexus.local.v1` en este mismo origen local, `l
 
 ## Limitacion del navegador
 
-Un sitio en `127.0.0.1` no puede leer automaticamente el `localStorage` que haya quedado guardado en GitHub Pages, porque el navegador separa los datos por origen. Para mover datos desde otro origen hay que exportarlos/importarlos manualmente.
+Un sitio en `127.0.0.1`, GitHub Pages o Render no puede leer automaticamente el `localStorage` que haya quedado guardado en otro origen, porque el navegador separa los datos por dominio. Para mover datos desde otro origen hay que exportarlos/importarlos manualmente.

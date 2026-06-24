@@ -8,6 +8,23 @@
     <link rel="stylesheet" href="login.css" />
     <link rel="shortcut icon" href="../assets/favicon.png" />
     <script src="../../config.js" defer></script>
+    <script>
+      (function () {
+        var isLocalMode = new URLSearchParams(window.location.search).get('mode') === 'local';
+        window.BOOKSNEXUS_LOCAL_MODE = isLocalMode;
+
+        if (isLocalMode) {
+          document.write('<script src="../../local-api.js" defer><\/script>');
+          window.addEventListener('DOMContentLoaded', function () {
+            var backLink = document.querySelector('.back-link');
+
+            if (backLink) {
+              backLink.href = '../../index.html?mode=local';
+            }
+          });
+        }
+      })();
+    </script>
     <script src="login.js" defer></script>
   </head>
 

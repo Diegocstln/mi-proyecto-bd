@@ -1,0 +1,253 @@
+:root {
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --ink: #14313f;
+  --muted: #61727a;
+  --paper: #f3f8f7;
+  --surface: #ffffff;
+  --line: #d7e5e3;
+  --blue: #166d7a;
+  --aqua: #29a7a0;
+  --orange: #df7a45;
+  --blue-soft: #dff1f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    linear-gradient(110deg, rgba(20, 49, 63, 0.86), rgba(41, 167, 160, 0.45)),
+    url("https://images.unsplash.com/photo-1481627834876-b7833e8f5570?auto=format&fit=crop&w=1500&q=80");
+  background-position: center;
+  background-size: cover;
+  font-family: var(--font-body);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  align-items: center;
+  gap: clamp(28px, 6vw, 80px);
+  padding: clamp(24px, 6vw, 72px);
+}
+
+.auth-copy {
+  max-width: 640px;
+  color: #fff;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 800;
+}
+
+.auth-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--orange);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-family: var(--font-display);
+  max-width: 720px;
+  margin: 0;
+  font-size: clamp(2.8rem, 8vw, 6.4rem);
+  line-height: 0.92;
+}
+
+.auth-copy p:not(.eyebrow) {
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 1.08rem;
+}
+
+.auth-panel {
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(25, 42, 70, 0.18);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 22px;
+  background: var(--blue-soft);
+  border-radius: 8px;
+}
+
+.tabs button,
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.tabs button {
+  color: var(--blue);
+  background: transparent;
+}
+
+.tabs button.active {
+  color: #fff;
+  background: var(--blue);
+}
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.primary-button {
+  margin-top: 6px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--aqua), var(--blue));
+}
+
+.hint {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.hint.error {
+  color: #a03a22;
+}
+
+.toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100% - 36px));
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 13px 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--line);
+  border-left: 5px solid #2f7d5b;
+  border-radius: 8px;
+  box-shadow: 0 16px 42px rgba(25, 42, 70, 0.18);
+  animation: toast-in 180ms ease;
+}
+
+.toast strong,
+.toast span {
+  display: block;
+}
+
+.toast strong {
+  line-height: 1.2;
+}
+
+.toast span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.toast.error {
+  border-left-color: #a03a22;
+}
+
+.toast.leaving {
+  animation: toast-out 220ms ease forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (max-width: 840px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .back-link {
+    margin-bottom: 34px;
+  }
+}

@@ -1,40 +1,314 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BooksNexus | Biblioteca social</title>
+    <link rel="shortcut icon" href="src/assets/favicon.png" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="local-api.js" defer></script>
+    <script src="app.js" defer></script>
+    <script src="admin.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="BooksNexus inicio">
+        <img class="brand-logo" src="src/assets/logo.png" alt="" width="46" height="46" />
+        <span>BooksNexus</span>
+      </a>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BiblioTech | Tu Refugio del Saber</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="index.css">
-</head>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Abrir menú">
+        <i class="fa-solid fa-bars" aria-hidden="true"></i>
+      </button>
 
-<body>
+      <nav class="nav-tabs" id="main-nav" aria-label="Navegación principal">
+        <button class="active" type="button" data-view-target="explorar">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <span>Explorar</span>
+        </button>
+        <button type="button" data-view-target="comunidad">
+          <i class="fa-solid fa-users" aria-hidden="true"></i>
+          <span>Comunidad</span>
+        </button>
+        <button type="button" data-view-target="perfil">
+          <i class="fa-solid fa-user" aria-hidden="true"></i>
+          <span>Mi perfil</span>
+        </button>
+      </nav>
 
-    <section class="hero">
-        <h1>Bienvenidos a BiblioTech</h1>
-        <p>Donde las historias cobran vida y el conocimiento no tiene límites. Explora miles de ejemplares en un espacio
-            diseñado para tu inspiración.</p>
-        <a href="#explorar" class="btn">Explorar Catálogo</a>
-        <a href="#explorar" class="btn">Login</a>
-    </section>
+      <div class="topbar-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar a tema oscuro" title="Cambiar tema">
+          <i class="fa-solid fa-moon" aria-hidden="true"></i>
+        </button>
+        <a class="login-button" href="src/login/login.html" data-auth-link>
+          <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+          <span>Entrar</span>
+        </a>
+      </div>
+    </header>
 
-    <section id="explorar" class="services">
-        <div class="card">
-            <h3>📖 Colección Digital</h3>
-            <p>Accede a miles de e-books y revistas científicas desde cualquier dispositivo.</p>
+    <main class="app-shell">
+      <section class="view active" id="view-explorar" data-view="explorar">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Catálogo conectado</p>
+            <h1>Explora libros, guarda lecturas y comparte hallazgos.</h1>
+            <p>Busca títulos desde BooksNexus y arma una biblioteca lista para crecer con usuarios, listas y reseñas.</p>
+          </div>
+
+          <aside class="quick-stats" aria-label="Resumen de catálogo">
+            <div>
+              <span>Libros encontrados</span>
+              <strong id="total-books">0</strong>
+            </div>
+            <div>
+              <span>Guardados</span>
+              <strong id="saved-books">0</strong>
+            </div>
+          </aside>
         </div>
-        <div class="card">
-            <h3>Préstamos</h3>
-            <p></p>
-        </div>
-    </section>
 
-    <footer>
-        <p>&copy; 2026 BiblioTech.</p>
+        <form class="search-panel" id="search-form" aria-label="Buscar libros">
+          <label for="search-input">Buscar en el catálogo</label>
+          <div class="search-row">
+            <input id="search-input" name="q" type="search" placeholder="Cien años de soledad, Pedro Páramo, Borges..." autocomplete="off" minlength="3" maxlength="120" required />
+            <button class="primary-button" type="submit">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <span>Buscar</span>
+            </button>
+          </div>
+          <p class="status" id="status" role="status">Escribe al menos 3 letras para buscar automáticamente.</p>
+        </form>
+
+        <div class="catalog-layout">
+          <aside class="filters" aria-label="Filtros secundarios">
+            <h2>Filtros</h2>
+            <label>
+              Estado
+              <div class="segmented-control" aria-label="Filtros del catálogo">
+                <button class="active" type="button" data-filter="all">Todos</button>
+                <button type="button" data-filter="saved">Guardados</button>
+              </div>
+            </label>
+            <label>
+              Autor
+              <select id="author-filter">
+                <option value="">Todos los autores</option>
+              </select>
+            </label>
+            <label>
+              Categoría
+              <div class="category-tags" id="category-filter" aria-label="Filtrar por categoría">
+                <button class="category-chip active" type="button" data-category="" data-category-name="Todas las categorías" title="Todas las categorías">Todas</button>
+                <button class="category-chip fiction" type="button" data-category="fiction" data-category-name="Ficción" title="Ficción">Ficción</button>
+                <button class="category-chip fantasy" type="button" data-category="fantasy" data-category-name="Fantasía" title="Fantasía">Fantasía</button>
+                <button class="category-chip romance" type="button" data-category="romance" data-category-name="Romance" title="Romance">Romance</button>
+                <button class="category-chip mystery" type="button" data-category="mystery" data-category-name="Misterio" title="Misterio">Misterio</button>
+                <button class="category-chip scifi" type="button" data-category="science_fiction" data-category-name="Ciencia ficción" title="Ciencia ficción">Sci-fi</button>
+                <button class="category-chip history" type="button" data-category="history" data-category-name="Historia" title="Historia">Historia</button>
+                <button class="category-chip young" type="button" data-category="young_adult" data-category-name="Young adult" title="Young adult">YA</button>
+                <button class="category-chip bio" type="button" data-category="biography" data-category-name="Biografía" title="Biografía">Bio</button>
+              </div>
+            </label>
+          </aside>
+
+          <section class="results" aria-labelledby="results-title">
+            <div class="results-head">
+              <h2 id="results-title">Resultados</h2>
+              <span id="result-count">0 libros</span>
+            </div>
+            <div class="book-grid" id="book-grid" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-comunidad" data-view="comunidad" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Actividad social</p>
+            <h1>Comunidad</h1>
+            <p>Reseñas, rankings y recomendaciones para que la red de lectores tenga vida desde el primer vistazo.</p>
+          </div>
+          <aside class="quick-stats" aria-label="Resumen de comunidad">
+            <div>
+              <span>Reseñas</span>
+              <strong id="community-review-count">0</strong>
+            </div>
+            <div>
+              <span>Lectores activos</span>
+              <strong id="community-reader-count">0</strong>
+            </div>
+          </aside>
+        </div>
+
+        <div class="activity-grid">
+          <article class="feed-panel">
+            <h2>Reseñas recientes</h2>
+            <div id="community-reviews"></div>
+          </article>
+
+          <article class="ranking-panel">
+            <h2>Ranking semanal</h2>
+            <ol id="ranking-list"></ol>
+          </article>
+
+          <article class="ranking-panel">
+            <h2>Lectores</h2>
+            <label class="reader-search">
+              Buscar lector
+              <input id="reader-search" type="search" placeholder="Usuario o nombre" autocomplete="off" maxlength="80" />
+            </label>
+            <ol id="reader-list"></ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="view profile-view" id="view-perfil" data-view="perfil" hidden>
+        <div class="profile-header">
+          <div class="avatar" id="profile-avatar" aria-hidden="true">BN</div>
+          <div>
+            <p class="eyebrow">Perfil de lector</p>
+            <h1 id="profile-name">Mi perfil</h1>
+            <p id="profile-username">Inicia sesión para ver tus datos reales.</p>
+            <div class="profile-social-counts" id="profile-social-counts" hidden>
+              <button type="button" data-profile-connection="followers">
+                <strong id="profile-followers-count">0</strong>
+                <span>seguidores</span>
+              </button>
+              <button type="button" data-profile-connection="following">
+                <strong id="profile-following-count">0</strong>
+                <span>seguidos</span>
+              </button>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <button class="ghost-button" id="profile-edit-button" type="button" hidden>
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+              <span>Editar</span>
+            </button>
+            <button class="ghost-button danger-button" id="profile-delete-button" type="button" hidden>
+              <i class="fa-solid fa-trash" aria-hidden="true"></i>
+              <span>Eliminar</span>
+            </button>
+            <button class="ghost-button logout-button" id="logout-button" type="button" hidden>
+              <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+              <span>Salir</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="reading-now">
+          <span id="profile-email">Sin sesión activa</span>
+          <strong id="profile-status">Conecta con tu cuenta desde la pantalla de acceso.</strong>
+          <div class="profile-summary" id="profile-summary"></div>
+        </div>
+
+        <div class="profile-lock" id="profile-lock" hidden>
+          <div class="lock-orbit" aria-hidden="true">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <strong>Aún no has iniciado sesión</strong>
+          <p>Entra con tu usuario para activar favoritos, lecturas, listas y estadísticas.</p>
+          <a class="primary-button" href="src/login/login.html">
+            <i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
+            <span>Iniciar sesión</span>
+          </a>
+        </div>
+
+        <div class="library-board">
+          <article>
+            <div class="section-head">
+              <h2>Listas personalizadas</h2>
+              <button class="icon-button" id="list-create-button" type="button" aria-label="Crear lista" title="Crear lista" hidden>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="list-card">
+              <span>Favoritos guardados</span>
+              <strong id="profile-favorites-count">0 libros</strong>
+            </div>
+            <div id="profile-lists"></div>
+          </article>
+
+          <article>
+            <div class="section-head">
+              <h2>Favoritos</h2>
+              <button class="icon-button" id="favorite-add-button" type="button" aria-label="Agregar favorito" title="Agregar favorito" hidden>
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div id="profile-favorites"></div>
+            <div class="section-head profile-subsection">
+              <h2>Lecturas</h2>
+            </div>
+            <div class="timeline-item">
+              <span class="dot"></span>
+              <p><strong id="profile-last-favorite">Sin actividad</strong> Guarda un libro para verlo aquí.</p>
+            </div>
+            <div id="profile-reading"></div>
+            <div class="section-head profile-subsection">
+              <h2>Mis reseñas</h2>
+            </div>
+            <div id="profile-reviews"></div>
+          </article>
+
+          <article>
+            <h2>Estadísticas</h2>
+            <div class="stats-row">
+              <span>Libros favoritos</span>
+              <strong id="profile-stats-favorites">0</strong>
+            </div>
+            <div class="stats-row">
+              <span>Estado</span>
+              <strong>Activo</strong>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>BooksNexus 2026</span>
     </footer>
-</body>
 
+    <dialog class="book-detail-dialog" id="book-detail-dialog" aria-labelledby="detail-title">
+      <div class="dialog-head">
+        <h2 id="detail-title">Detalle del libro</h2>
+        <button class="icon-button" id="detail-close" type="button" aria-label="Cerrar detalle" title="Cerrar">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="dialog-body" id="detail-body"></div>
+    </dialog>
+
+    <dialog class="book-detail-dialog action-dialog" id="action-dialog" aria-labelledby="action-title">
+      <form method="dialog" class="dialog-form" id="action-form">
+        <div class="dialog-head">
+          <h2 id="action-title">Acción</h2>
+          <button class="icon-button" id="action-cancel" type="button" aria-label="Cerrar" title="Cerrar">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="dialog-body" id="action-body"></div>
+        <div class="dialog-actions">
+          <button class="ghost-button" type="button" id="action-secondary">Cancelar</button>
+          <button class="primary-button" type="submit" id="action-primary">Guardar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <dialog class="book-detail-dialog" id="reader-dialog" aria-labelledby="reader-title">
+      <div class="dialog-head">
+        <h2 id="reader-title">Perfil público</h2>
+        <button class="icon-button" id="reader-close" type="button" aria-label="Cerrar perfil" title="Cerrar">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="dialog-body" id="reader-body"></div>
+    </dialog>
+  </body>
 </html>

@@ -8,6 +8,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link rel="stylesheet" href="styles.css" />
     <script src="config.js" defer></script>
+    <script>
+      (function () {
+        var isLocalMode = new URLSearchParams(window.location.search).get('mode') === 'local';
+        window.BOOKSNEXUS_LOCAL_MODE = isLocalMode;
+
+        if (isLocalMode) {
+          document.write('<script src="local-api.js" defer><\/script>');
+          window.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('a[href="src/login/login.html"]').forEach(function (link) {
+              link.href = 'src/login/login.html?mode=local';
+            });
+          });
+        }
+      })();
+    </script>
     <script src="app.js" defer></script>
     <script src="admin.js" defer></script>
   </head>

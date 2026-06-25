@@ -1,6 +1,5 @@
 # BooksNexus
 
-Frontend estatico de BooksNexus publicado desde `Diegocstln/mi-proyecto-bd`, rama `erik`.
 
 Hay dos enlaces publicados en GitHub Pages:
 

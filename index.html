@@ -38,7 +38,11 @@
       </button>
 
       <nav class="nav-tabs" id="main-nav" aria-label="Navegación principal">
-        <button class="active" type="button" data-view-target="explorar">
+        <button class="active" type="button" data-view-target="fotos">
+          <i class="fa-solid fa-images" aria-hidden="true"></i>
+          <span>Fotos</span>
+        </button>
+        <button type="button" data-view-target="explorar">
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
           <span>Explorar</span>
         </button>
@@ -64,7 +68,57 @@
     </header>
 
     <main class="app-shell">
-      <section class="view active" id="view-explorar" data-view="explorar">
+      <section class="view active" id="view-fotos" data-view="fotos">
+        <div class="photo-hero">
+          <div>
+            <p class="eyebrow">Entrega especial</p>
+            <h1>Album oficial de evidencia visual.</h1>
+            <p>La pagina principal ahora abre con todas las fotos encontradas en la carpeta local. Nada de esto toca la rama principal hasta que alguien acepte el PR.</p>
+          </div>
+          <span>9 fotos</span>
+        </div>
+
+        <section class="photo-wall" aria-label="Galeria de fotos">
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-03-27 at 12.41.10.jpeg" alt="Foto 1 de la galeria" loading="lazy" />
+            <figcaption>Foto 01</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-04-08 at 11.01.42.jpeg" alt="Foto 2 de la galeria" loading="lazy" />
+            <figcaption>Foto 02</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-04-08 at 15.08.41.jpeg" alt="Foto 3 de la galeria" loading="lazy" />
+            <figcaption>Foto 03</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-04-20 at 17.59.25.jpeg" alt="Foto 4 de la galeria" loading="lazy" />
+            <figcaption>Foto 04</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-04-27 at 15.39.18.jpeg" alt="Foto 5 de la galeria" loading="lazy" />
+            <figcaption>Foto 05</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-05-18 at 20.51.41.jpeg" alt="Foto 6 de la galeria" loading="lazy" />
+            <figcaption>Foto 06</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-05-18 at 20.52.33.jpeg" alt="Foto 7 de la galeria" loading="lazy" />
+            <figcaption>Foto 07</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-05-18 at 20.53.17.jpeg" alt="Foto 8 de la galeria" loading="lazy" />
+            <figcaption>Foto 08</figcaption>
+          </figure>
+          <figure class="photo-card">
+            <img src="fotos/WhatsApp Image 2026-05-18 at 20.57.38.jpeg" alt="Foto 9 de la galeria" loading="lazy" />
+            <figcaption>Foto 09</figcaption>
+          </figure>
+        </section>
+      </section>
+
+      <section class="view" id="view-explorar" data-view="explorar" hidden>
         <div class="page-heading">
           <div>
             <p class="eyebrow">Catálogo conectado</p>
